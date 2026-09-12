@@ -33,6 +33,9 @@ router.get('/', async (req, res) => {
         )
       )
     )
+      // 이미 막차가 끊겨 탑승 마감이 지난(minutesUntilDeadline <= 0) 후보는 "이론상 경로"일
+      // 뿐 실제로 탈 수 없으므로 목록에서 제외한다 (1.3 핵심가치: "실제로 탈 수 있는 막차").
+      .filter((c) => c.minutesUntilDeadline > 0)
       // 막차 여유시간이 넉넉한 순으로 정렬 (F2 처리 로직)
       .sort((a, b) => b.minutesUntilDeadline - a.minutesUntilDeadline);
 

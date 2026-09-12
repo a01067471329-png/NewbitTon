@@ -4,10 +4,14 @@
  * 데이터 소스:
  * - 지하철: ODsay searchSubwaySchedule (평일/토요일/일요일·공휴일 시간표를 요일별로 따로 제공,
  *   firstLastFlag로 막차를 직접 표시함). ODsay 경로탐색 응답의 startID를 그대로 사용해서
- *   별도 역 검색 없이 바로 조회 가능.
+ *   별도 역 검색 없이 바로 조회 가능. 상행/하행 중 이 구간이 실제로 향하는 방향은 경로탐색
+ *   응답의 wayCode(1=상행, 2=하행)로 확정해서 고른다 — wayCode가 없는 예외 상황에서만
+ *   두 방향의 더 이른 시각을 채택하는 근사로 폴백한다.
  * - 버스: 정류장 단위 막차는 서울시 TOPIS 정류소정보조회(getBustimeByStation, BUS_STATION_INFO_API_KEY),
  *   여기서 실패하면 ODsay busLaneDetail(기점 기준, 정확도는 떨어짐)로 대체
- * - 키가 없거나 조회에 실패하면 지하철 24:00 / 버스 23:30 mock으로 안전하게 대체한다.
+ * - 막차 시각이 상식적인 범위를 벗어나면(예: 지하철 막차가 오후 6시) API 응답/파싱 문제로 보고
+ *   신뢰하지 않는다. 키가 없거나 조회·검증에 실패하면 지하철 24:00 / 버스 23:30 mock으로
+ *   안전하게 대체한다.
  */
 
 const { classifySafety } = require('../utils/safety');
@@ -41,6 +45,18 @@ function parseHHcolonMM(hhmm) {
   return { hour, minute };
 }
 
+// 막차 시각이 상식적인 범위를 벗어나면(예: 지하철 막차가 오후 6시) 외부 API 응답 파싱이
+// 잘못됐을 가능성이 매우 높다. 그런 값을 그대로 "탑승 마감 시각"으로 내보내면 실제보다
+// 훨씬 이른 시각에 막차를 놓친 것처럼 잘못 안내해 사용자를 위험에 빠뜨릴 수 있으므로,
+// 범위를 벗어나면 신뢰하지 않고 null을 반환해 mock 기본값으로 안전하게 대체한다.
+// (hour는 자정 이후 막차를 24시 초과 표기로 다루는 이 코드베이스 관례를 따른다.)
+const SUBWAY_LAST_DEPARTURE_RANGE = { minHour: 21, maxHour: 26 }; // 21:00 ~ 익일 02:00
+const BUS_LAST_DEPARTURE_RANGE = { minHour: 19, maxHour: 26 }; // 19:00 ~ 익일 02:00
+
+function isPlausibleLastDeparture(dep, { minHour, maxHour }) {
+  return !!dep && dep.hour >= minHour && dep.hour <= maxHour;
+}
+
 // ---- 지하철: ODsay searchSubwaySchedule ----
 
 // 일요일 -> holidaySchedule, 토요일 -> saturdaySchedule, 그 외 -> weekdaySchedule
@@ -63,10 +79,14 @@ function lastDepartureTimeOf(list) {
 
 /**
  * 지하철 막차 시각 조회.
- * 상행/하행 중 정확한 방향을 특정하기 어려워서, 두 방향을 모두 조회한 뒤 더 이른 시각을
- * 채택한다 (막차를 놓치는 쪽보다 안전한 방향으로 근사).
+ * ODsay 경로탐색 응답의 지하철 subPath에는 이 구간이 실제로 향하는 방향의 wayCode
+ * (1=상행, 2=하행; 공식 문서 예시 응답 "way":"합정","wayCode":2 참고)가 이미 들어있고,
+ * searchSubwaySchedule의 up/down 배열도 같은 규칙을 쓴다. 그래서 예전처럼 상/하행을 둘 다
+ * 조회해서 "더 이른 시각"을 추측으로 채택하지 않고, wayCode로 실제 진행 방향의 스케줄만
+ * 정확히 골라 쓴다. wayCode가 없거나 그 방향 데이터가 비어있는 예외적인 경우에만 예전의
+ * min(상행,하행) 근사로 안전하게 폴백한다.
  */
-async function lookupSubwayLastDeparture(stationID, now) {
+async function lookupSubwayLastDeparture(stationID, wayCode, now) {
   const key = process.env.ODSAY_API_KEY;
   if (!key || !stationID) return null;
   try {
@@ -76,14 +96,60 @@ async function lookupSubwayLastDeparture(stationID, now) {
       return res.json();
     });
 
-    const sched = data?.result?.[subwayScheduleKeyFor(now)];
-    if (!sched) return null;
+    const scheduleKey = subwayScheduleKeyFor(now);
+    const sched = data?.result?.[scheduleKey];
+    if (!sched) {
+      console.error('[DEBUG lastTrain][subway] no schedule for key', {
+        stationID,
+        scheduleKey,
+        resultKeys: data?.result ? Object.keys(data.result) : null,
+      });
+      return null;
+    }
 
-    const times = [lastDepartureTimeOf(sched.up), lastDepartureTimeOf(sched.down)]
-      .filter(Boolean)
-      .sort();
-    if (!times.length) return null;
-    return parseHHcolonMM(times[0]);
+    const upLast = lastDepartureTimeOf(sched.up);
+    const downLast = lastDepartureTimeOf(sched.down);
+
+    let chosen;
+    let pickMethod;
+    if (wayCode === 1 && upLast) {
+      chosen = upLast;
+      pickMethod = 'wayCode=1(상행) 확정';
+    } else if (wayCode === 2 && downLast) {
+      chosen = downLast;
+      pickMethod = 'wayCode=2(하행) 확정';
+    } else {
+      const times = [upLast, downLast].filter(Boolean).sort();
+      chosen = times[0];
+      pickMethod = 'wayCode 불명/데이터 없음 - min(상행,하행) 근사 폴백';
+    }
+
+    console.error('[DEBUG lastTrain][subway]', {
+      stationID,
+      wayCode,
+      scheduleKey,
+      upCount: sched.up?.length ?? 0,
+      downCount: sched.down?.length ?? 0,
+      upFlagged: sched.up?.filter((x) => x.firstLastFlag === 2).map((x) => x.departureTime),
+      downFlagged: sched.down?.filter((x) => x.firstLastFlag === 2).map((x) => x.departureTime),
+      upLast,
+      downLast,
+      pickMethod,
+      chosen,
+    });
+    if (!chosen) return null;
+    const parsed = parseHHcolonMM(chosen);
+    if (!isPlausibleLastDeparture(parsed, SUBWAY_LAST_DEPARTURE_RANGE)) {
+      console.error('[lastTrain] 비정상적인 지하철 막차시각 감지, mock으로 대체', {
+        stationID,
+        wayCode,
+        upLast,
+        downLast,
+        parsed,
+      });
+      return null;
+    }
+    return parsed;
   } catch (err) {
     console.error('[lastTrain] ODsay 지하철 시간표 조회 실패:', err.message);
     return null;
@@ -104,15 +170,33 @@ async function lookupBusLastDepartureFromTopis(arsId, busRouteId) {
     return { firstBusTm: item?.firstBusTm || null, lastBusTm: item?.lastBusTm || null };
   });
   const last = parseHHMM(result?.lastBusTm);
-  if (!last) return null;
+  if (!last) {
+    console.error('[DEBUG lastTrain][bus/topis] lastBusTm 파싱 실패', { arsId, busRouteId, result });
+    return null;
+  }
   const first = parseHHMM(result?.firstBusTm);
   // TOPIS는 자정을 넘겨 운행하는 노선의 막차를 00~03시대의 작은 숫자로 표시한다.
   // 막차 시(hour)가 첫차 시보다 작으면 "오늘 새벽에 이미 지난 시각"이 아니라
   // "오늘 밤 자정 이후"로 해석해 24시간을 더한다.
-  if (first && last.hour < first.hour) {
-    return { hour: last.hour + 24, minute: last.minute };
+  const adjusted = first && last.hour < first.hour ? { hour: last.hour + 24, minute: last.minute } : last;
+  console.error('[DEBUG lastTrain][bus/topis]', {
+    arsId,
+    busRouteId,
+    rawFirstBusTm: result?.firstBusTm,
+    rawLastBusTm: result?.lastBusTm,
+    parsedFirst: first,
+    parsedLast: last,
+    adjusted,
+  });
+  if (!isPlausibleLastDeparture(adjusted, BUS_LAST_DEPARTURE_RANGE)) {
+    console.error('[lastTrain] 비정상적인 버스 막차시각(TOPIS) 감지, 폴백으로 대체', {
+      arsId,
+      busRouteId,
+      adjusted,
+    });
+    return null;
   }
-  return last;
+  return adjusted;
 }
 
 async function lookupBusLastDepartureFromOdsay(busID) {
@@ -124,7 +208,13 @@ async function lookupBusLastDepartureFromOdsay(busID) {
     const data = await res.json();
     return data?.result?.busLastTime || null; // "HH:MM" (심야버스는 "28:00"처럼 24시 초과 표기)
   });
-  return parseHHcolonMM(lastTime);
+  console.error('[DEBUG lastTrain][bus/odsay]', { busID, rawLastTime: lastTime });
+  const parsed = parseHHcolonMM(lastTime);
+  if (!isPlausibleLastDeparture(parsed, BUS_LAST_DEPARTURE_RANGE)) {
+    console.error('[lastTrain] 비정상적인 버스 막차시각(ODsay) 감지, mock으로 대체', { busID, parsed });
+    return null;
+  }
+  return parsed;
 }
 
 async function lookupBusLastDeparture(busSubPath) {
@@ -145,7 +235,7 @@ async function lookupBusLastDeparture(busSubPath) {
 async function lookupLastDeparture(sp, now) {
   if (!sp) return MOCK_SUBWAY_LAST;
   if (sp.trafficType === TRAFFIC_TYPE.SUBWAY) {
-    return (await lookupSubwayLastDeparture(sp.startID, now)) || MOCK_SUBWAY_LAST;
+    return (await lookupSubwayLastDeparture(sp.startID, sp.wayCode, now)) || MOCK_SUBWAY_LAST;
   }
   if (sp.trafficType === TRAFFIC_TYPE.BUS) {
     return (await lookupBusLastDeparture(sp)) || MOCK_BUS_LAST;
@@ -235,6 +325,18 @@ async function buildCandidate(rawPath, { walkSpeedFactor, now, routeId }) {
     const lastDepDate = toDateAt(now, lastDep.hour, lastDep.minute);
     const cumulativeToBoarding = idx === 0 ? 0 : cumulativeAfter[idx - 1];
     const requiredDeparture = new Date(lastDepDate.getTime() - cumulativeToBoarding * 60000);
+    console.error('[DEBUG lastTrain][leg]', {
+      routeId,
+      legIdx: idx,
+      mode: legs[idx].mode,
+      line: legs[idx].line,
+      from: legs[idx].from,
+      to: legs[idx].to,
+      lastDep,
+      lastDepDate: lastDepDate.toISOString(),
+      cumulativeToBoarding,
+      requiredDeparture: requiredDeparture.toISOString(),
+    });
     if (!departureDeadline || requiredDeparture < departureDeadline) {
       departureDeadline = requiredDeparture;
     }

@@ -4,6 +4,7 @@ import AppShell from '../components/AppShell';
 import BackButton from '../components/BackButton';
 import AlternativeCard from '../components/AlternativeCard';
 import { fetchAlternatives } from '../api';
+import { waitingSpotIcon } from '../utils/alternativesFormat';
 import './Alternatives.css';
 
 // F6 대안 안내 화면. F3+F4의 각 구간 카드 "놓치면?" 버튼에서 ?segment=<id>&lat=&lng=로
@@ -83,7 +84,8 @@ export default function Alternatives() {
             <div className="alternatives__list">
               {data.waitingSpots.map((spot, i) => (
                 <div className="alt-spot" key={`${spot.name}-${i}`}>
-                  🏪 {spot.name} <span className="alt-spot__walk">(도보 {spot.walkMin}분)</span>
+                  {waitingSpotIcon(spot.type)} {spot.name}{' '}
+                  <span className="alt-spot__walk">(도보 {spot.walkMin}분)</span>
                 </div>
               ))}
             </div>

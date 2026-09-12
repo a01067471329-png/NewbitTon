@@ -1,0 +1,20 @@
+{
+  "name": "newbiton-backend",
+  "version": "0.1.0",
+  "description": "Newbiton 환승 막차 알리미 - 백엔드 (PRD 5장 API 계약 구현)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "generate-vapid": "node scripts/generateVapidKeys.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

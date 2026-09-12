@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import BackButton from '../components/BackButton';
-import SegmentCard from '../components/SegmentCard';
+import RouteTimeline from '../components/RouteTimeline';
 import PushSubscribeBanner from '../components/PushSubscribeBanner';
 import { getCurrentTrip, saveCurrentTrip, clearCurrentTrip } from '../utils/storage';
 import { classifySafety } from '../utils/safety';
 import { formatCountdown } from '../utils/countdown';
-import { buildSegments } from '../utils/segments';
+import { buildRouteTimeline } from '../utils/timeline';
 import { formatKstTime, transitLegsOf, transferCountOf, legIcon } from '../utils/routeFormat';
 import { fetchVapidPublicKey, subscribePush, unsubscribePush } from '../api';
 import {
@@ -63,9 +63,9 @@ export default function Main() {
 
   const route = trip?.selectedRoute;
 
-  const segments = useMemo(() => {
+  const timelineSteps = useMemo(() => {
     if (!route) return [];
-    return buildSegments(route, trip?.destination);
+    return buildRouteTimeline(route, trip);
   }, [route, trip]);
 
   if (!trip) {
@@ -195,10 +195,8 @@ export default function Main() {
       </section>
 
       <section className="segment-list">
-        <h2 className="segment-list__title">환승 구간</h2>
-        {segments.map((segment) => (
-          <SegmentCard key={segment.id} segment={segment} now={now} onMissed={handleMissed} />
-        ))}
+        <h2 className="segment-list__title">경로</h2>
+        <RouteTimeline steps={timelineSteps} now={now} onMissed={handleMissed} />
       </section>
     </AppShell>
   );

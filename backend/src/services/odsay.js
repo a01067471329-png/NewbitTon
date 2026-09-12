@@ -8,7 +8,12 @@
  * 필요하면 이 파일의 parseOdsayResponse()만 수정하면 됩니다 (다른 코드는 영향 없음).
  */
 
+const { createCache } = require('../lib/cache');
+
 const ODSAY_URL = 'https://api.odsay.com/v1/api/searchPubTransPathT';
+
+// ODsay Basic 플랜은 일 1,000건 한도라 같은 출발-도착 조합은 5분간 캐시해서 아낌
+const cache = createCache(5 * 60 * 1000);
 
 function getMockRawPaths() {
   // 실제 ODsay 응답과 형태만 비슷하게 흉내낸 mock (없어도 서버가 동작하도록)
@@ -38,24 +43,31 @@ async function searchPaths({ startX, startY, endX, endY }) {
     return { mocked: true, rawPaths: getMockRawPaths() };
   }
 
-  const params = new URLSearchParams({
-    apiKey,
-    SX: startX,
-    SY: startY,
-    EX: endX,
-    EY: endY,
-    SearchPathType: '0', // 0: 지하철+버스 모두
+  const cacheKey = `${startX},${startY}->${endX},${endY}`;
+  return cache.wrap(cacheKey, async () => {
+    const params = new URLSearchParams({
+      apiKey,
+      SX: startX,
+      SY: startY,
+      EX: endX,
+      EY: endY,
+      SearchPathType: '0', // 0: 지하철+버스 모두
+    });
+
+    const res = await fetch(`${ODSAY_URL}?${params.toString()}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`ODsay API 오류 (${res.status}): ${text}`);
+    }
+
+    const data = await res.json();
+    if (data.error) {
+      throw new Error(`ODsay API 오류: ${JSON.stringify(data.error)}`);
+    }
+
+    const rawPaths = data?.result?.path || [];
+    return { mocked: false, rawPaths };
   });
-
-  const res = await fetch(`${ODSAY_URL}?${params.toString()}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`ODsay API 오류 (${res.status}): ${text}`);
-  }
-
-  const data = await res.json();
-  const rawPaths = data?.result?.path || [];
-  return { mocked: false, rawPaths };
 }
 
 module.exports = { searchPaths };

@@ -38,13 +38,26 @@ npm run generate-vapid
 
 요청/응답 예시는 PRD 5장에 있는 것과 동일합니다.
 
-## 아직 실제 데이터로 안 바꾼 부분 (TODO)
+## 실연동 현황
 
-1. **`src/services/lastTrain.js`의 `lookupLastDeparture()`** — 지금은 지하철 24:00 / 버스 23:30로
-   하드코딩된 mock입니다. 서울교통공사 첫차·막차 정보 API(공공데이터포털)로 교체 필요.
-2. **`src/services/odsay.js`** — 실제 ODsay 키로 처음 호출해보면 응답 필드명이 문서와 다를 수 있으니,
-   `rawPaths` 구조를 콘솔로 한 번 확인하고 `lastTrain.js`의 `buildCandidate()`가 기대하는
-   형태(`subPath[].trafficType/lane/startName/endName/sectionTime`)와 맞는지 검증하세요.
+- ✅ **카카오 로컬 API** (`src/services/kakaoGeocode.js`) — 실키로 검증 완료, 6시간 캐시 적용
+- ✅ **ODsay** (`src/services/odsay.js`) — 실키로 검증 완료 (Server 플랫폼 + 공인 IP 등록 필요했음),
+  실제 응답 필드가 `lastTrain.js`의 `buildCandidate()`가 기대하는 형태
+  (`subPath[].trafficType/lane/startName/endName/sectionTime`)와 일치함을 확인. 5분 캐시 적용.
+- ⚠️ **지하철 역명 검색** (서울 열린데이터광장 `SearchInfoBySubwayNameService`) — 키 발급 및 호출 확인됨.
+  단, 아직 코드에는 연결 안 되어 있음 (막차 시각 API가 죽어있어 당장 활용처가 없음).
+- ⚠️ **버스 정류소 검색** (`getStationByName`, data.go.kr) — 호출 확인됨. `getBustimeByStationList`(첫차/막차)는
+  같은 키로 401 발생, 별도 오퍼레이션 승인 필요한 것으로 보임.
+
+## 아직 실제 데이터로 못 바꾼 부분 (TODO)
+
+1. **`src/services/lastTrain.js`의 `lookupLastDeparture()`** — 지금도 지하철 24:00 / 버스 23:30
+   하드코딩된 mock입니다. **서울교통공사 지하철 막차 시간표 API가 사실상 폐지된 상태**로 확인됐습니다
+   (서울 열린데이터광장의 관련 데이터셋 OA-101/108/109/1190/15492 전부 "서비스 종료" 배너 확인,
+   서비스명 후보 13개 이상 시도했지만 전부 실패). data.go.kr 카탈로그(15058970 등)는 아직 "자동승인"으로
+   남아있으나 실제 백엔드가 죽어있는 것으로 보임. 대안 데이터 소스를 찾으면 교체 예정.
+2. **버스 막차 시각** — `getBustimeByStationList` 오퍼레이션이 401(등록되지 않은 서비스키)로 거부됨.
+   data.go.kr 마이페이지에서 이 오퍼레이션이 실제로 승인 목록에 있는지 재확인 필요.
 3. **`src/routes/alternatives.js`** — 심야버스 노선·대기 장소 데이터 소스가 아직 미확정 (PRD 10장).
 
 이 세 가지 외에는 PRD의 F1~F6 로직(도보속도 보정, 역산 알람 시각 계산, 환승 여유시간 등급,

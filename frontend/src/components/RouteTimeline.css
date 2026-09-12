@@ -24,16 +24,16 @@
   position: absolute;
   top: 0;
   bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 2px;
   background: var(--color-border);
 }
 
-.route-timeline .timeline-row:first-child .timeline-row__rail::before {
-  top: 50%;
-}
-
-.route-timeline .timeline-row:last-child .timeline-row__rail::before {
-  bottom: 50%;
+/* 출발/도착(검은 동그라미) 지점은 선이 통과하지 않도록 — 실제 이동 구간(탑승·하차)
+   사이에만 세로선이 이어지게 한다. */
+.timeline-row--point .timeline-row__rail::before {
+  display: none;
 }
 
 .timeline-dot {

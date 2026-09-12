@@ -44,7 +44,7 @@ export default function RouteTimeline({ steps, now, onMissed }) {
               </div>
               {step.missable && (
                 <button type="button" className="timeline-row__missed" onClick={() => onMissed(step)}>
-                  놓치면?
+                  막차를 놓치셨나요?
                 </button>
               )}
             </div>
@@ -74,7 +74,7 @@ export default function RouteTimeline({ steps, now, onMissed }) {
                 )}
               </div>
               <button type="button" className="timeline-row__missed" onClick={() => onMissed(step)}>
-                놓치면?
+                막차를 놓치셨나요?
               </button>
             </div>
           </div>

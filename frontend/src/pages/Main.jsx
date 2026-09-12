@@ -166,7 +166,7 @@ export default function Main() {
           <span className="main-banner__emoji" aria-hidden="true">
             {copy.emoji}
           </span>
-          <span>캐릭터 상태: {copy.label}</span>
+          <span>{copy.label}</span>
         </div>
       </section>
 
@@ -179,9 +179,25 @@ export default function Main() {
         </p>
         <div className="route-summary__legs">
           {legs.map((leg, i) => (
-            <span className="route-summary__leg" key={i}>
-              {legIcon(leg.mode)} {leg.line}
-            </span>
+            <div className="route-summary__leg-step" key={i}>
+              <div className="route-summary__leg-track">
+                <span
+                  className={
+                    'route-summary__leg-line' + (i === 0 ? ' route-summary__leg-line--hidden' : '')
+                  }
+                />
+                <span className="route-summary__leg-dot" />
+                <span
+                  className={
+                    'route-summary__leg-line' +
+                    (i === legs.length - 1 ? ' route-summary__leg-line--hidden' : '')
+                  }
+                />
+              </div>
+              <span className="route-summary__leg">
+                {legIcon(leg.mode)} {leg.line}
+              </span>
+            </div>
           ))}
         </div>
         <div className="route-summary__footer">

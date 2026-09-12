@@ -87,8 +87,41 @@
 
 .route-summary__legs {
   display: flex;
-  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.route-summary__leg-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 6px;
+  min-width: 0;
+}
+
+/* 각 노선의 동그라미를 회색 선으로 이어주는 미니 스테퍼 */
+.route-summary__leg-track {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.route-summary__leg-line {
+  flex: 1;
+  height: 2px;
+  background: var(--color-border);
+}
+
+.route-summary__leg-line--hidden {
+  background: transparent;
+}
+
+.route-summary__leg-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
 }
 
 .route-summary__leg {
@@ -98,6 +131,7 @@
   border-radius: 999px;
   background: #fff;
   border: 1px solid var(--color-border);
+  white-space: nowrap;
 }
 
 .route-summary__footer {

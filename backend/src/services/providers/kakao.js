@@ -8,15 +8,14 @@
  * - 지하철: 노선명이 "N호선"(1~9)이면 서울 열린데이터광장 시간표(seoulMetroSchedule,
  *   ODsay를 전혀 안 씀)를 우선 시도하고, 그 외 노선(신분당선 등, 실제 호출로 시간표
  *   데이터가 없음을 확인함)은 ODsay searchStation(역명 검색)으로 stationID를 얻어
- *   기존 lastTrain.js 로직으로 폴백한다. 방향은 카카오 stops[]의 다음 역과 서울시
- *   STATION_CD(노선을 따라 순차적으로 매겨짐)를 비교해 확정한다(seoulMetroSchedule
- *   참고) — 분기 구간 등으로 판단이 애매하면 안전하게 "이른 시각 채택"으로 폴백.
- *   ODsay 폴백 경로는 여전히 wayCode가 없어 그 근사를 그대로 쓴다.
+ *   기존 lastTrain.js 로직으로 폴백한다. 방향은 같은 열차번호가 다음 역에 언제
+ *   도착하는지를 비교해 확정한다(seoulMetroSchedule 참고) — 순환선에서도 성립.
+ *   ODsay 폴백 경로는 여전히 wayCode가 없어 예전 근사를 그대로 쓴다.
  * - 버스: TOPIS getStationByPos(좌표 반경 검색)로 이름이 일치하는 정류장을 찾고,
  *   getRouteByStation으로 그 노선의 busRouteId를 확인한다. 동명이정류장(도로 반대편의
- *   다른 방향 정류장)이 여러 개면, 카카오 경로 좌표(path.points)로 실제 진행방향
- *   벡터를 만들어 외적으로 "오른쪽"(한국 우측통행 기준) 정류장을 고른다 — 실제
- *   사례(9m/115m 거리의 동명 정류장 2개)로 검증 완료. 그래도 애매하면 mock 폴백.
+ *   다른 방향 정류장)이 여러 개면 (1) 다음 정류장과의 첫차 시각 순서로 실제 진행
+ *   방향을 확정하고, 그게 안 되면 (2) 경로 좌표로 만든 진행방향 벡터 기준 오른쪽
+ *   (우측통행) 정류장을 고르고, 그래도 애매하면 mock으로 폴백한다.
  *
  * 카카오 이용약관상 경로 결과 자체는 캐싱하지 않고 항상 실시간으로 호출한다. 대신
  * 이름->ID 매핑은 역/정류장 위치가 거의 바뀌지 않으므로 사실상 영구 캐시한다.
@@ -69,11 +68,17 @@ async function resolveSubwayStationId(stationName) {
   });
 }
 
-// 카카오는 "지하철2호선강남역(중)"처럼 중앙차로 등을 괄호로 부기하는데 TOPIS DB엔
-// 그 부기가 없어("지하철2호선강남역") 정확 일치 비교가 항상 실패했다. 검색어에서
-// 제거한다.
-function cleanStopName(name) {
+// 카카오는 괄호로 부기를 붙이는데(정류장 "지하철2호선강남역(중)", 노선 "N62(심야)")
+// TOPIS DB에는 그 부기가 없어서("지하철2호선강남역", "N62") 정확 일치 비교가 항상
+// 실패한다. 비교 전에 괄호 부기를 제거한다.
+function stripParens(name) {
   return (name || '').replace(/\(.*?\)/g, '').trim();
+}
+
+// 노선명은 괄호를 떼기 전/후 둘 다 허용한다. 실제 노선명에 괄호가 들어있는 경우
+// (공항버스 등)를 괄호 제거 때문에 놓치지 않도록 정확 일치를 먼저 본다.
+function busNameMatches(topisName, kakaoName) {
+  return topisName === kakaoName || topisName === stripParens(kakaoName);
 }
 
 // 두 벡터의 외적 z성분. 진행방향 D 기준으로 V가 오른쪽(시계방향)이면 음수가 된다.
@@ -120,7 +125,7 @@ function busTimeToMinutes(hhmmss) {
 async function stopsNear(key, x, y, cleanName, radius = 200) {
   const url = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByPos?serviceKey=${key}&tmX=${x}&tmY=${y}&radius=${radius}&resultType=json`;
   const data = await (await fetch(url)).json();
-  return (data?.msgBody?.itemList || []).filter((s) => cleanStopName(s.stationNm) === cleanName);
+  return (data?.msgBody?.itemList || []).filter((s) => stripParens(s.stationNm) === cleanName);
 }
 
 async function firstBusMinutes(key, arsId, busRouteId) {
@@ -137,7 +142,7 @@ async function firstBusMinutes(key, arsId, busRouteId) {
  * 실측(140번 강남역/논현역): 정답 조합 +1.7분, 반대 방향 -2.5분, 엉뚱한 조합 ±56분.
  */
 async function pickByRunOrder(key, candidates, nextStopName, points) {
-  const cleanNext = cleanStopName(nextStopName);
+  const cleanNext = stripParens(nextStopName);
   if (!cleanNext || !Array.isArray(points) || points.length < 4) return null;
   try {
     // 다음 정류장은 경로 좌표를 따라 조금 진행한 지점 근처에서 찾는다.
@@ -164,7 +169,7 @@ async function pickByRunOrder(key, candidates, nextStopName, points) {
 
 async function resolveBusIds(stopName, nextStopName, points, busNo) {
   const key = process.env.BUS_STATION_INFO_API_KEY;
-  const cleanName = cleanStopName(stopName);
+  const cleanName = stripParens(stopName);
   const [x, y] = points?.[0] || [];
   if (!key || !cleanName || x == null || y == null || !busNo) return null;
   const cacheKey = `${cleanName}|${busNo}|${Number(x).toFixed(5)},${Number(y).toFixed(5)}`;
@@ -180,7 +185,7 @@ async function resolveBusIds(stopName, nextStopName, points, busNo) {
           const routeUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getRouteByStation?serviceKey=${key}&arsId=${stop.arsId}&resultType=json`;
           const routeRes = await fetch(routeUrl);
           const routeData = await routeRes.json();
-          const match = (routeData?.msgBody?.itemList || []).find((r) => r.busRouteNm === busNo);
+          const match = (routeData?.msgBody?.itemList || []).find((r) => busNameMatches(r.busRouteNm, busNo));
           return match ? { stop, arsId: stop.arsId, busRouteId: match.busRouteId } : null;
         })
       );

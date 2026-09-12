@@ -58,6 +58,20 @@ function isPlausibleLastDeparture(dep, { minHour, maxHour }) {
   return !!dep && dep.hour >= minHour && dep.hour <= maxHour;
 }
 
+// TOPIS는 자정을 넘겨 운행하는 노선의 막차를 00~03시대의 작은 숫자로 표시한다(이
+// 코드베이스는 자정 이후를 24시 초과 표기로 다루는 관례를 씀). 원래는 "막차 시(hour)가
+// 첫차 시보다 작으면 자정 이후"로 판단했는데, 심야 전용 노선(N62 등)은 첫차·막차가
+// 둘 다 이미 00~03시대라 이 비교 자체가 성립하지 않아 보정이 안 걸리는 문제가 있었다
+// (예: 첫차 01:18·막차 02:35 → 2 < 1이 거짓이라 보정 안 됨 → 상식범위 밖으로 판정돼
+// mock 폴백). 첫차와 비교하는 대신, 이미 있는 상식범위 검증을 그대로 재사용해서
+// "그대로는 범위 밖인데 24시간을 더하면 범위 안"인 경우에만 보정하도록 일반화한다.
+function normalizeToPlausibleRange(dep, range) {
+  if (!dep) return null;
+  if (isPlausibleLastDeparture(dep, range)) return dep;
+  const shifted = { hour: dep.hour + 24, minute: dep.minute };
+  return isPlausibleLastDeparture(shifted, range) ? shifted : null;
+}
+
 // ---- 지하철: ODsay searchSubwaySchedule ----
 
 // 일요일 -> holidaySchedule, 토요일 -> saturdaySchedule, 그 외 -> weekdaySchedule
@@ -148,25 +162,13 @@ async function lookupBusLastDepartureFromTopis(arsId, busRouteId) {
   });
   const last = parseHHMM(result?.lastBusTm);
   if (!last) return null;
-  const first = parseHHMM(result?.firstBusTm);
-  // TOPIS는 자정을 넘겨 운행하는 노선의 막차를 00~03시대의 작은 숫자로 표시한다.
-  // 막차 시(hour)가 첫차 시보다 작으면 "오늘 새벽에 이미 지난 시각"이 아니라
-  // "오늘 밤 자정 이후"로 해석해 24시간을 더한다.
-  const adjusted = first && last.hour < first.hour ? { hour: last.hour + 24, minute: last.minute } : last;
-  // TODO(임시 디버그): ODsay가 확정해준 startArsID가 실제로 어느 정류장인지, TOPIS 원본
-  // 시각과 함께 검증하기 위한 로그. 검증 끝나면 제거할 것.
-  console.error('[DEBUG lastTrain][bus/topis]', {
-    arsId,
-    busRouteId,
-    rawFirstBusTm: result?.firstBusTm,
-    rawLastBusTm: result?.lastBusTm,
-    adjusted,
-  });
-  if (!isPlausibleLastDeparture(adjusted, BUS_LAST_DEPARTURE_RANGE)) {
+  const adjusted = normalizeToPlausibleRange(last, BUS_LAST_DEPARTURE_RANGE);
+  if (!adjusted) {
     console.error('[lastTrain] 비정상적인 버스 막차시각(TOPIS) 감지, 폴백으로 대체', {
       arsId,
       busRouteId,
-      adjusted,
+      rawFirstBusTm: result?.firstBusTm,
+      rawLastBusTm: result?.lastBusTm,
     });
     return null;
   }
@@ -176,13 +178,6 @@ async function lookupBusLastDepartureFromTopis(arsId, busRouteId) {
 async function lookupBusLastDeparture(busSubPath) {
   try {
     const lane = busSubPath?.lane?.[0];
-    console.error('[DEBUG lastTrain][bus/leg]', {
-      busNo: lane?.busNo,
-      startName: busSubPath?.startName,
-      endName: busSubPath?.endName,
-      startArsID: busSubPath?.startArsID,
-      busLocalBlID: lane?.busLocalBlID,
-    });
     return await lookupBusLastDepartureFromTopis(busSubPath?.startArsID, lane?.busLocalBlID);
   } catch (err) {
     console.error('[lastTrain] 버스 막차 조회 실패:', err.message);

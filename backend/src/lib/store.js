@@ -37,9 +37,24 @@ function updateSubscription(id, patch) {
   return record;
 }
 
+// 막차 마감 시각이 지난 지 오래된 구독은 더 이상 알림 대상이 아니므로 정리한다.
+// (인메모리 저장소라 테스트 중 쌓인 구독이 계속 남아있는 걸 방지)
+function deleteExpiredSubscriptions(now, graceMs) {
+  let deleted = 0;
+  for (const [id, record] of subscriptions) {
+    if (!record.departureDeadline) continue;
+    if (now - new Date(record.departureDeadline).getTime() > graceMs) {
+      subscriptions.delete(id);
+      deleted += 1;
+    }
+  }
+  return deleted;
+}
+
 module.exports = {
   createSubscription,
   deleteSubscription,
+  deleteExpiredSubscriptions,
   listSubscriptions,
   updateSubscription,
 };

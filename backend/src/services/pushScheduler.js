@@ -8,6 +8,8 @@ const store = require('../lib/store');
 const { classifySafety } = require('../utils/safety');
 
 const CHECK_INTERVAL_MS = 10 * 1000;
+// 막차 마감 시각이 이만큼(2시간) 지난 구독은 알림 대상이 아니므로 정리한다.
+const EXPIRE_GRACE_MS = 2 * 60 * 60 * 1000;
 
 function isVapidConfigured() {
   return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
@@ -55,6 +57,10 @@ async function sendNotification(record, safety, minutesLeft) {
 
 function tick() {
   const now = new Date();
+  const removed = store.deleteExpiredSubscriptions(now.getTime(), EXPIRE_GRACE_MS);
+  if (removed > 0) {
+    console.log(`[pushScheduler] 막차 마감 지난 구독 ${removed}건 정리`);
+  }
   for (const record of store.listSubscriptions()) {
     if (!record.departureDeadline) continue;
     const minutesLeft = Math.round((new Date(record.departureDeadline) - now) / 60000);

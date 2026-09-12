@@ -115,7 +115,10 @@ export default function Main() {
     navigate(`/alternatives?${params.toString()}`);
   }
 
-  function handleEditRoute() {
+  // "경로 수정"과 화면 맨 아래 "막차 안내 종료" 버튼이 공유하는 종료 로직 — 라벨은
+  // 다르지만("다른 경로로 바꿀래요" vs "그만 볼래요") 실제로 하는 일은 동일하다:
+  // 진행 중인 알람/구독을 정리하고 온보딩부터 다시 시작한다.
+  function handleEndGuidance() {
     // 이 경로에 대한 Push 구독이 남아있으면 계속 알림이 오므로, 트립을 비우기 전에
     // 최선을 다해(best-effort) 해제한다 — 실패해도 화면 전환은 막지 않는다.
     if (trip.pushSubscriptionId) {
@@ -204,7 +207,7 @@ export default function Main() {
           <p className="route-summary__meta">
             총 소요 {route.totalDurationMin}분 · 환승 {transferCount}회
           </p>
-          <button type="button" className="route-edit-button" onClick={handleEditRoute}>
+          <button type="button" className="route-edit-button" onClick={handleEndGuidance}>
             경로 수정
           </button>
         </div>
@@ -214,6 +217,10 @@ export default function Main() {
         <h2 className="segment-list__title">경로 안내</h2>
         <RouteTimeline steps={timelineSteps} now={now} onMissed={handleMissed} />
       </section>
+
+      <button type="button" className="end-guidance-button" onClick={handleEndGuidance}>
+        막차 안내 종료
+      </button>
     </AppShell>
   );
 }

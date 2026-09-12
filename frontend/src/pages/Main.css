@@ -171,6 +171,20 @@
   font-weight: 700;
 }
 
+/* 화면 맨 아래 "막차 안내 종료" — 계속 앞으로 나아가는 흐름이 아니라 끝내는
+   동작이라, 파란 기본 버튼(cta-button)이 아닌 톤 다운된 스타일로 구분한다. */
+.end-guidance-button {
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-text-muted);
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .main-empty {
   flex: 1;
   display: flex;

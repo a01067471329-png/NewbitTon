@@ -14,7 +14,6 @@ function createSubscription({ subscription, selectedRoute }) {
     subscription,
     departureDeadline: selectedRoute?.departureDeadline || null,
     transferGaps: selectedRoute?.transferGaps || [],
-    lastNotifiedSafety: null,
     // pushScheduler.js의 COUNTDOWN_STAGES(탑승 가능 시간 3시간/2시간59분/2시간58분
     // 전 사전 안내) 중 이미 보낸 stage.key 목록 — 같은 구간을 중복으로 보내지 않기 위함.
     notifiedCountdownStages: [],

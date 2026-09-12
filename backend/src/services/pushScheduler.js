@@ -1,16 +1,13 @@
 /**
- * PRD F5: 위험도 등급이 바뀔 때마다 Web Push 발송.
- * 10초 간격으로 저장된 구독을 순회하며 현재 시각 기준 등급을 재계산하고,
- * 직전에 알린 등급과 다르면 Push를 보낸다.
+ * "탑승 가능 시간(departureDeadline)" 기준 3시간/2시간 59분/2시간 58분 전에
+ * 각각 한 번씩 Web Push 사전 안내 알림을 보낸다(COUNTDOWN_STAGES).
+ * 10초 간격으로 저장된 구독을 순회하며 지금 몇 분 남았는지 확인한다.
  *
- * 추가로, "탑승 가능 시간(departureDeadline)" 기준 3시간/2시간 59분/2시간 58분
- * 전에도 각각 한 번씩 사전 안내 알림을 보낸다(COUNTDOWN_STAGES) — 위 위험도
- * 등급 알림(막차 임박 5분/2분 기준)과는 시간대가 겹치지 않는 완전히 별개의
- * 체계라 서로 간섭하지 않는다.
+ * (예전에는 위험도 등급(안전/주의/위험, 5분/2분 기준)이 바뀔 때마다 보내는
+ * 알림도 있었지만, 이 3단계 사전 안내 알림만 남기기로 하고 제거했다.)
  */
 const webpush = require('web-push');
 const store = require('../lib/store');
-const { classifySafety } = require('../utils/safety');
 
 const CHECK_INTERVAL_MS = 10 * 1000;
 // 막차 마감 시각이 이만큼(2시간) 지난 구독은 알림 대상이 아니므로 정리한다.
@@ -42,12 +39,6 @@ function configureWebPush() {
   );
 }
 
-const NOTIFICATION_COPY = {
-  safe: { title: '막차랑이 · 여유 있어요', body: (m) => `막차까지 ${m}분 남았어요. 아직 안전해요!` },
-  caution: { title: '막차랑이 · 슬슬 서둘러요', body: (m) => `여유가 ${m}분밖에 안 남았어요. 걸음을 서둘러주세요.` },
-  danger: { title: '막차랑이 · 위험! 뛰세요', body: (m) => `막차까지 ${m}분! 지금 서두르지 않으면 놓쳐요.` },
-};
-
 // "탑승 가능 시간"(departureDeadline) 3시간/2시간 59분/2시간 58분 전 사전 안내.
 // minutesLeft는 Math.floor 기준(해당 분 동안 정확히 1번씩만 조건을 만족한다) —
 // 팀 디자이너가 만들어준 안전/주의/위험 캐릭터 배너를 순서대로 붙여, 데모에서
@@ -77,9 +68,9 @@ const COUNTDOWN_STAGES = [
   },
 ];
 
-async function sendPush(record, { title, body, image, safety }) {
+async function sendPush(record, { title, body, image }) {
   if (!isVapidConfigured()) return;
-  const payload = JSON.stringify({ title, body, safety: safety ?? null, image: image ?? null });
+  const payload = JSON.stringify({ title, body, image: image ?? null });
   try {
     await webpush.sendNotification(record.subscription, payload);
   } catch (err) {
@@ -89,14 +80,6 @@ async function sendPush(record, { title, body, image, safety }) {
       store.deleteSubscription(record.id);
     }
   }
-}
-
-function checkSafetyTierChange(record, minutesLeftRounded) {
-  const safety = classifySafety(minutesLeftRounded);
-  if (safety === record.lastNotifiedSafety) return;
-  const copy = NOTIFICATION_COPY[safety];
-  sendPush(record, { title: copy.title, body: copy.body(minutesLeftRounded), safety });
-  store.updateSubscription(record.id, { lastNotifiedSafety: safety });
 }
 
 function checkCountdownStages(record, minutesLeftFloor) {
@@ -118,7 +101,6 @@ function tick() {
   for (const record of store.listSubscriptions()) {
     if (!record.departureDeadline) continue;
     const diffMs = new Date(record.departureDeadline).getTime() - now.getTime();
-    checkSafetyTierChange(record, Math.round(diffMs / 60000));
     checkCountdownStages(record, Math.floor(diffMs / 60000));
   }
 }
@@ -126,7 +108,7 @@ function tick() {
 function startPushScheduler() {
   configureWebPush();
   setInterval(tick, CHECK_INTERVAL_MS);
-  console.log(`[pushScheduler] ${CHECK_INTERVAL_MS / 1000}초 간격으로 등급 전이를 감시합니다.`);
+  console.log(`[pushScheduler] ${CHECK_INTERVAL_MS / 1000}초 간격으로 탑승 가능 시간 카운트다운을 감시합니다.`);
 }
 
 module.exports = { startPushScheduler };

@@ -1,0 +1,32 @@
+.route-map {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #eef1f6;
+}
+
+.route-map__canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.route-map__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #eef1f6;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 0 24px;
+}
+
+.route-map__overlay span {
+  font-size: 22px;
+}

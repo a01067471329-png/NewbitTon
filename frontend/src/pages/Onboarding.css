@@ -1,0 +1,142 @@
+.onboarding__header {
+  padding-top: 4px;
+}
+
+.onboarding__eyebrow {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-primary);
+  text-transform: uppercase;
+}
+
+.onboarding__title {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+.onboarding__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.onboarding__label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.onboarding__helper {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+
+.onboarding__helper--muted {
+  background: #f4f5f7;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+}
+
+.location-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+}
+
+.location-badge--pending {
+  color: var(--color-text-muted);
+  background: #fafbfc;
+}
+
+.location-badge--ok {
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  border-color: var(--color-primary-bg);
+}
+
+.location-edit-link {
+  align-self: flex-start;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.walk-speed-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.walk-speed-btn {
+  padding: 12px 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #fafbfc;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.walk-speed-btn--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.home-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-bg);
+}
+
+.home-banner__text {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-primary);
+  line-height: 1.4;
+}
+
+.home-banner__dismiss {
+  border: none;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.cta-button {
+  margin-top: auto;
+  padding: 15px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 15.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cta-button:disabled {
+  background: #c6cdd9;
+  cursor: not-allowed;
+}

@@ -61,6 +61,7 @@ async function mockFetchRoutes() {
   await delay(300);
   return {
     mocked: true,
+    allExpired: false,
     candidates: [
       {
         routeId: 'r1',

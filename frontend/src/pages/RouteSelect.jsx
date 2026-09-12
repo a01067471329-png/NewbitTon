@@ -16,6 +16,11 @@ export default function RouteSelect() {
   const navigate = useNavigate();
   const [trip] = useState(() => getCurrentTrip());
   const [candidates, setCandidates] = useState(null); // null = 아직 로딩 전
+  // candidates가 빈 배열([])일 때 두 가지 다른 상황을 구분하기 위한 플래그.
+  // false: ODsay가 경로 자체를 못 찾음 / true: 경로는 있었지만 전부 막차가
+  // 이미 끊김(예: 새벽 시간대) — 백엔드가 departureDeadline이 지난 후보를
+  // 필터링해서 빼기 때문에 발생한다 (PRD 5장, GET /api/routes 응답 스키마 참고).
+  const [allExpired, setAllExpired] = useState(false);
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
   const [retryKey, setRetryKey] = useState(0);
@@ -25,6 +30,7 @@ export default function RouteSelect() {
     let cancelled = false;
     setError(null);
     setCandidates(null);
+    setAllExpired(false);
     setSelectedId(null);
 
     fetchRoutes({
@@ -37,6 +43,7 @@ export default function RouteSelect() {
       .then((res) => {
         if (cancelled) return;
         setCandidates(res.candidates || []);
+        setAllExpired(res.allExpired || false);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -94,7 +101,9 @@ export default function RouteSelect() {
 
       {!error && candidates && candidates.length === 0 && (
         <p className="route-select__status">
-          이용 가능한 경로가 없어요. 도착지를 바꿔서 다시 시도해보세요.
+          {allExpired
+            ? '오늘은 이미 막차가 모두 끊겼어요. 내일 다시 이용해주세요.'
+            : '이용 가능한 경로가 없어요. 도착지를 바꿔서 다시 시도해보세요.'}
         </p>
       )}
 

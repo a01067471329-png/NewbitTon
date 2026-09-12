@@ -113,8 +113,20 @@ export async function fetchRoutes({ startX, startY, endX, endY, walkSpeed, perso
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/push/subscribe , DELETE /api/push/subscribe/:id
+// GET /api/push/vapid-public-key , POST /api/push/subscribe , DELETE /api/push/subscribe/:id
 // ---------------------------------------------------------------------------
+async function mockFetchVapidPublicKey() {
+  await delay(100);
+  // mock 모드에서는 실제 Push 발송이 불가능하므로 null을 반환한다.
+  // 프론트는 이 값이 없으면 "지금은 알림을 받을 수 없어요" 상태로 처리한다.
+  return { publicKey: null };
+}
+
+export async function fetchVapidPublicKey() {
+  if (USE_MOCK) return mockFetchVapidPublicKey();
+  return request('/api/push/vapid-public-key');
+}
+
 async function mockSubscribePush() {
   await delay(200);
   return { id: 'mock-sub-1', ok: true };

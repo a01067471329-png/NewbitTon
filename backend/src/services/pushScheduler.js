@@ -41,9 +41,15 @@ function configureWebPush() {
 
 // "탑승 가능 시간"(departureDeadline) 3시간/2시간 59분/2시간 58분 전 사전 안내.
 // minutesLeft는 Math.floor 기준(해당 분 동안 정확히 1번씩만 조건을 만족한다) —
-// 팀 디자이너가 만들어준 안전/주의/위험 캐릭터 배너를 순서대로 붙여, 데모에서
+// 팀 디자이너가 만들어준 안전/주의/위험 캐릭터 이미지를 순서대로 붙여, 데모에서
 // departureDeadline을 "지금부터 3시간 뒤"로 잡아두면 이후 2분 사이에 3건이
 // 순서대로 도착하는 걸 보여줄 수 있다.
+//
+// image(1200x600, 안드로이드 전용 "큰 이미지" 알림)와 icon(512x512, iOS 포함
+// 모든 플랫폼에서 알림 옆에 작게 표시되는 아이콘)을 둘 다 같은 payload에 실어
+// 보낸다 — 구독은 기기별로 하나뿐이라 백엔드는 수신 기기가 안드로이드인지
+// iOS인지 미리 알 수 없으므로, 각 플랫폼이 자기가 지원하는 필드만 골라 쓰게
+// 한다(iOS Safari는 image를 지원하지 않아 자동 무시, icon만 사용).
 const COUNTDOWN_STAGES = [
   {
     key: 'stage-3h',
@@ -51,6 +57,7 @@ const COUNTDOWN_STAGES = [
     title: '막차랑이',
     body: '3시간 남았어요!',
     image: `${PUBLIC_BASE_URL}/notification/character-safe-banner1.png`,
+    icon: `${PUBLIC_BASE_URL}/notification/character-safe-icon1.png`,
   },
   {
     key: 'stage-2h59m',
@@ -58,6 +65,7 @@ const COUNTDOWN_STAGES = [
     title: '막차랑이',
     body: '2시간 59분 남았어요!',
     image: `${PUBLIC_BASE_URL}/notification/character-caution-banner2.png`,
+    icon: `${PUBLIC_BASE_URL}/notification/character-caution-icon2.png`,
   },
   {
     key: 'stage-2h58m',
@@ -65,12 +73,13 @@ const COUNTDOWN_STAGES = [
     title: '막차랑이',
     body: '2시간 58분 남았어요!',
     image: `${PUBLIC_BASE_URL}/notification/character-danger-banner3.png`,
+    icon: `${PUBLIC_BASE_URL}/notification/character-danger-icon3.png`,
   },
 ];
 
-async function sendPush(record, { title, body, image }) {
+async function sendPush(record, { title, body, image, icon }) {
   if (!isVapidConfigured()) return;
-  const payload = JSON.stringify({ title, body, image: image ?? null });
+  const payload = JSON.stringify({ title, body, image: image ?? null, icon: icon ?? null });
   try {
     await webpush.sendNotification(record.subscription, payload);
   } catch (err) {

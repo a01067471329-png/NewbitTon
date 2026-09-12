@@ -100,114 +100,179 @@ export default function Onboarding() {
 
     navigate('/routes');
   }
+return (
+  <AppShell>
+    <header className="onboarding__header">
+      <div className="onboarding__hero-copy">
+        <p className="onboarding__eyebrow">NEWBITON</p>
 
-  return (
-    <AppShell>
-      <header className="onboarding__header">
-        <p className="onboarding__eyebrow">Newbiton</p>
-        <h1 className="onboarding__title">막차 놓치지 않게,{'\n'}지금 준비해볼게요</h1>
-      </header>
+        <h1 className="onboarding__title">
+          <span className="onboarding__title-accent">오늘 막차,</span>
+          <br />
+          놓치지 않게 알려드릴게요
+        </h1>
 
-      <section className="onboarding__field">
-        <label className="onboarding__label">1. 출발지</label>
-        {locationStatus === 'requesting' && (
-          <div className="location-badge location-badge--pending">위치 확인 중…</div>
-        )}
+        <p className="onboarding__subtitle">
+          출발지와 목적지만 알려주시면
+          <br />
+          딱 맞는 막차 경로를 찾아드려요
+        </p>
+      </div>
 
-        {locationStatus === 'granted' && startMode === 'auto' && (
-          <>
-            <div className="location-badge location-badge--ok">📍 현재 위치로 자동 설정됨</div>
-            <button type="button" className="location-edit-link" onClick={handleUseManualStart}>
-              출발지 직접 입력하기
-            </button>
-          </>
-        )}
-
-        {startMode === 'manual' && (
-          <>
-            {locationStatus === 'denied' || locationStatus === 'error' ? (
-              <p className="onboarding__helper">
-                위치 권한이 없어 출발지를 검색으로 설정해주세요.
-              </p>
-            ) : null}
-            <PlaceSearchField
-              placeholder="출발지를 검색하세요 (역명·장소·주소)"
-              selected={startPlace}
-              onSelect={setStartPlace}
-              onClear={() => setStartPlace(null)}
-            />
-            {locationStatus === 'granted' && (
-              <button
-                type="button"
-                className="location-edit-link"
-                onClick={handleUseCurrentLocation}
-              >
-                📍 현재 위치 사용하기
-              </button>
-            )}
-          </>
-        )}
-      </section>
-
-      <section className="onboarding__field">
-        <label className="onboarding__label">2. 도착지</label>
-        <PlaceSearchField
-          placeholder="어디로 가시나요? (역명·장소·주소 모두 검색 가능)"
-          selected={destPlace}
-          onSelect={setDestPlace}
-          onClear={() => setDestPlace(null)}
+      <div className="onboarding__hero-art" aria-hidden="true">
+        <div className="onboarding__moon" />
+        <img
+          src="/tiger.png"
+          alt=""
+          className="onboarding__tiger"
         />
-      </section>
+      </div>
+    </header>
 
-      <section className="onboarding__field">
-        <label className="onboarding__label">3. 걸음 속도</label>
-        <div className="walk-speed-group">
-          {WALK_SPEED_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={
-                'walk-speed-btn' + (walkSpeed === option.value ? ' walk-speed-btn--active' : '')
-              }
-              onClick={() => handleWalkSpeedChange(option.value)}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+    <section className="onboarding__field onboarding__card">
+      <div className="onboarding__section-heading">
+        <span className="onboarding__section-icon onboarding__section-icon--blue">
+          📍
+        </span>
+        <label className="onboarding__label">
+          출발지는 어디인가요?
+        </label>
+      </div>
 
-        {walkSpeed === '맞춤형' && (
-          <p className="onboarding__helper onboarding__helper--muted">
-            별도 측정 없이, 실제로 도보 구간을 이동할 때마다 GPS로 속도를 자동으로 기록해요.
-            이동 기록이 쌓이기 전까지는 "보통" 속도로 계산돼요.
-          </p>
-        )}
-      </section>
-
-      {!isStandalone && !homeBannerDismissed && (
-        <div className="home-banner">
-          <span className="home-banner__text">
-            📲 막차 임박 알림을 받으려면 홈 화면에 추가해주세요 (iOS 필수)
-          </span>
-          <button
-            type="button"
-            className="home-banner__dismiss"
-            aria-label="배너 닫기"
-            onClick={handleDismissHomeBanner}
-          >
-            ✕
-          </button>
+      {locationStatus === 'requesting' && (
+        <div className="location-badge location-badge--pending">
+          현재 위치 확인 중…
         </div>
       )}
 
-      <button
-        type="button"
-        className="cta-button"
-        disabled={!canContinue}
-        onClick={handleContinue}
-      >
-        경로 후보 보기
-      </button>
-    </AppShell>
-  );
+      {locationStatus === 'granted' && startMode === 'auto' && (
+        <>
+          <div className="location-badge location-badge--ok">
+            현재 위치로 자동 설정됨
+          </div>
+
+          <button
+            type="button"
+            className="location-edit-link"
+            onClick={handleUseManualStart}
+          >
+            출발지 직접 입력하기
+          </button>
+        </>
+      )}
+
+      {startMode === 'manual' && (
+        <>
+          {locationStatus === 'denied' || locationStatus === 'error' ? (
+            <p className="onboarding__helper">
+              위치 권한이 없어 출발지를 검색으로 설정해주세요.
+            </p>
+          ) : null}
+
+          <PlaceSearchField
+            placeholder="출발지를 검색하세요"
+            selected={startPlace}
+            onSelect={setStartPlace}
+            onClear={() => setStartPlace(null)}
+          />
+
+          {locationStatus === 'granted' && (
+            <button
+              type="button"
+              className="location-edit-link"
+              onClick={handleUseCurrentLocation}
+            >
+              현재 위치 사용하기
+            </button>
+          )}
+        </>
+      )}
+    </section>
+
+    <section className="onboarding__field onboarding__card">
+      <div className="onboarding__section-heading">
+        <span className="onboarding__section-icon onboarding__section-icon--orange">
+          🚇
+        </span>
+        <label className="onboarding__label">
+          어디까지 가시나요?
+        </label>
+      </div>
+
+      <PlaceSearchField
+        placeholder="역명·장소·주소 모두 검색 가능"
+        selected={destPlace}
+        onSelect={setDestPlace}
+        onClear={() => setDestPlace(null)}
+      />
+    </section>
+
+    <section className="onboarding__field onboarding__card">
+      <div className="onboarding__section-heading">
+        <span className="onboarding__section-icon onboarding__section-icon--blue">
+          🚶
+        </span>
+        <label className="onboarding__label">
+          평소 걸음 속도는 어떤가요?
+        </label>
+      </div>
+
+      <div className="walk-speed-group">
+        {WALK_SPEED_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            className={
+              'walk-speed-btn' +
+              (walkSpeed === option.value
+                ? ' walk-speed-btn--active'
+                : '')
+            }
+            onClick={() => handleWalkSpeedChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {walkSpeed === '맞춤형' && (
+        <p className="onboarding__helper onboarding__helper--muted">
+          실제 도보 이동 기록을 바탕으로 걸음 속도를 자동으로 계산해요.
+          기록이 쌓이기 전까지는 보통 속도로 계산돼요.
+        </p>
+      )}
+    </section>
+
+    {!isStandalone && !homeBannerDismissed && (
+      <div className="home-banner">
+        <span className="home-banner__icon">🔔</span>
+
+        <span className="home-banner__text">
+          막차 임박 알림을 받으려면
+          <br />
+          홈 화면에 추가해주세요 <strong>(iOS 필수)</strong>
+        </span>
+
+        <button
+          type="button"
+          className="home-banner__dismiss"
+          aria-label="배너 닫기"
+          onClick={handleDismissHomeBanner}
+        >
+          ✕
+        </button>
+      </div>
+    )}
+
+    <button
+      type="button"
+      className="cta-button"
+      disabled={!canContinue}
+      onClick={handleContinue}
+    >
+      경로 후보 보기
+      <span className="cta-button__arrow">→</span>
+    </button>
+  </AppShell>
+);
 }

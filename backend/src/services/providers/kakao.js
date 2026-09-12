@@ -3,11 +3,14 @@
  * https://dapi.kakao.com/v2/routing/publictraffic (2026-07-21부터 서비스 중, 기존
  * 카카오 REST 키로 별도 심사 없이 바로 호출 가능 — 상세 조사 내역은 PRD 1.6/10.1 참고).
  *
- * 카카오 응답에는 역/정류장 "이름"만 있고 ID가 전혀 없어서, 막차시각 조회(ODsay
- * searchSubwaySchedule / TOPIS getBustimeByStation)에 필요한 ID로 역변환해야 한다:
- * - 지하철: ODsay searchStation(역명 검색)으로 stationID를 얻는다. 방향(wayCode)은
- *   ODsay 경로탐색 응답에서만 나오는 값이라 여기서는 얻을 수 없어, lastTrain.js의
- *   "wayCode 없으면 상/하행 중 이른 시각 채택" 폴백 경로를 그대로 탄다.
+ * 카카오 응답에는 역/정류장 "이름"만 있고 ID가 전혀 없어서, 막차시각 조회에 필요한
+ * ID로 역변환해야 한다:
+ * - 지하철: 노선명이 "N호선"(1~9)이면 서울 열린데이터광장 시간표(seoulMetroSchedule,
+ *   ODsay를 전혀 안 씀)를 우선 시도하고, 그 외 노선(신분당선 등, 실제 호출로 시간표
+ *   데이터가 없음을 확인함)은 ODsay searchStation(역명 검색)으로 stationID를 얻어
+ *   기존 lastTrain.js 로직으로 폴백한다. 방향(wayCode)은 ODsay 경로탐색 응답에서만
+ *   나오는 값이라 카카오 전환 후에는 얻을 수 없어, 두 경로 모두 "상/하행 중 이른
+ *   시각 채택" 근사를 쓴다(PRD 10.1 참고, 후속 개선 대상).
  * - 버스: TOPIS getStationByPos(좌표 반경 검색)로 이름이 일치하는 정류장을 찾고,
  *   getRouteByStation으로 그 노선의 busRouteId를 확인한다. 동명이정류장(같은 이름,
  *   다른 방향)이 여러 개면 1차 구현에서는 방향을 확정할 수 없으므로 포기하고 mock으로
@@ -17,6 +20,7 @@
  * 이름->ID 매핑은 역/정류장 위치가 거의 바뀌지 않으므로 사실상 영구 캐시한다.
  */
 const { createCache } = require('../../lib/cache');
+const seoulMetroSchedule = require('../seoulMetroSchedule');
 
 const PERMANENT_TTL = 365 * 24 * 60 * 60 * 1000;
 const subwayIdCache = createCache(PERMANENT_TTL);
@@ -119,6 +123,12 @@ async function mapStepToSubPath(step) {
   }
   if (p.type === 'SUBWAY') {
     const lineName = p.vehicles?.[0]?.name;
+    // 1~9호선이면 서울교통공사 시간표(ODsay 안 씀)를 우선 시도하고, 그 외 노선이거나
+    // 역을 못 찾으면 ODsay searchStation으로 폴백한다.
+    const seoulMetroFrCode = await seoulMetroSchedule.findFrCode(startName, lineName);
+    if (seoulMetroFrCode) {
+      return { ...base, trafficType: TRAFFIC_TYPE.SUBWAY, lane: [{ name: lineName }], seoulMetroFrCode };
+    }
     const startID = await resolveSubwayStationId(startName);
     return { ...base, trafficType: TRAFFIC_TYPE.SUBWAY, lane: [{ name: lineName }], startID };
   }

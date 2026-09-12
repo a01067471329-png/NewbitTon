@@ -8,13 +8,15 @@
  * - 지하철: 노선명이 "N호선"(1~9)이면 서울 열린데이터광장 시간표(seoulMetroSchedule,
  *   ODsay를 전혀 안 씀)를 우선 시도하고, 그 외 노선(신분당선 등, 실제 호출로 시간표
  *   데이터가 없음을 확인함)은 ODsay searchStation(역명 검색)으로 stationID를 얻어
- *   기존 lastTrain.js 로직으로 폴백한다. 방향(wayCode)은 ODsay 경로탐색 응답에서만
- *   나오는 값이라 카카오 전환 후에는 얻을 수 없어, 두 경로 모두 "상/하행 중 이른
- *   시각 채택" 근사를 쓴다(PRD 10.1 참고, 후속 개선 대상).
+ *   기존 lastTrain.js 로직으로 폴백한다. 방향은 카카오 stops[]의 다음 역과 서울시
+ *   STATION_CD(노선을 따라 순차적으로 매겨짐)를 비교해 확정한다(seoulMetroSchedule
+ *   참고) — 분기 구간 등으로 판단이 애매하면 안전하게 "이른 시각 채택"으로 폴백.
+ *   ODsay 폴백 경로는 여전히 wayCode가 없어 그 근사를 그대로 쓴다.
  * - 버스: TOPIS getStationByPos(좌표 반경 검색)로 이름이 일치하는 정류장을 찾고,
- *   getRouteByStation으로 그 노선의 busRouteId를 확인한다. 동명이정류장(같은 이름,
- *   다른 방향)이 여러 개면 1차 구현에서는 방향을 확정할 수 없으므로 포기하고 mock으로
- *   안전하게 폴백한다(다음 정류장 순서 비교로 방향을 확정하는 개선은 PRD 10.1 참고).
+ *   getRouteByStation으로 그 노선의 busRouteId를 확인한다. 동명이정류장(도로 반대편의
+ *   다른 방향 정류장)이 여러 개면, 카카오 경로 좌표(path.points)로 실제 진행방향
+ *   벡터를 만들어 외적으로 "오른쪽"(한국 우측통행 기준) 정류장을 고른다 — 실제
+ *   사례(9m/115m 거리의 동명 정류장 2개)로 검증 완료. 그래도 애매하면 mock 폴백.
  *
  * 카카오 이용약관상 경로 결과 자체는 캐싱하지 않고 항상 실시간으로 호출한다. 대신
  * 이름->ID 매핑은 역/정류장 위치가 거의 바뀌지 않으므로 사실상 영구 캐시한다.
@@ -67,35 +69,76 @@ async function resolveSubwayStationId(stationName) {
   });
 }
 
-async function resolveBusIds(stopName, x, y, busNo) {
+// 카카오는 "지하철2호선강남역(중)"처럼 중앙차로 등을 괄호로 부기하는데 TOPIS DB엔
+// 그 부기가 없어("지하철2호선강남역") 정확 일치 비교가 항상 실패했다. 검색어에서
+// 제거한다.
+function cleanStopName(name) {
+  return (name || '').replace(/\(.*?\)/g, '').trim();
+}
+
+// 두 벡터의 외적 z성분. 진행방향 D 기준으로 V가 오른쪽(시계방향)이면 음수가 된다.
+function cross2d(dx, dy, vx, vy) {
+  return dx * vy - dy * vx;
+}
+
+/**
+ * 동명이정류장(같은 이름, 도로 반대편의 다른 방향 정류장)이 여러 개 나오면, 카카오가
+ * 준 경로 좌표(path.points)로 실제 진행 방향 벡터를 만들고, 각 후보 정류장이 그
+ * 방향 기준 왼쪽/오른쪽 중 어디에 있는지 외적으로 판별한다. 한국은 우측통행이라
+ * 정방향으로 달리는 버스는 진행방향 기준 오른쪽 정류장에 선다 — 실제 동명이정류장
+ * 사례(9m 거리 차 정류장 2개)로 검증 완료.
+ */
+function pickByTravelDirection(candidates, points) {
+  if (candidates.length <= 1) return candidates[0] || null;
+  if (!Array.isArray(points) || points.length < 2) return null;
+
+  const [ox, oy] = points[0];
+  const [fx, fy] = points[Math.min(3, points.length - 1)];
+  const dx = fx - ox;
+  const dy = fy - oy;
+
+  const scored = candidates.map((c) => ({
+    candidate: c,
+    cross: cross2d(dx, dy, Number(c.stop.gpsX) - ox, Number(c.stop.gpsY) - oy),
+  }));
+  const onRight = scored.filter((s) => s.cross < 0);
+  if (onRight.length === 1) return onRight[0].candidate;
+  // 애매하면(오른쪽 후보가 0개 또는 여러 개) 확신할 수 없으니 포기한다.
+  return null;
+}
+
+async function resolveBusIds(stopName, points, busNo) {
   const key = process.env.BUS_STATION_INFO_API_KEY;
-  if (!key || !stopName || x == null || y == null || !busNo) return null;
-  const cacheKey = `${stopName}|${busNo}|${Number(x).toFixed(5)},${Number(y).toFixed(5)}`;
+  const cleanName = cleanStopName(stopName);
+  const [x, y] = points?.[0] || [];
+  if (!key || !cleanName || x == null || y == null || !busNo) return null;
+  const cacheKey = `${cleanName}|${busNo}|${Number(x).toFixed(5)},${Number(y).toFixed(5)}`;
   return busIdCache.wrap(cacheKey, async () => {
     try {
       const posUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByPos?serviceKey=${key}&tmX=${x}&tmY=${y}&radius=150&resultType=json`;
       const posRes = await fetch(posUrl);
       const posData = await posRes.json();
-      const nameMatches = (posData?.msgBody?.itemList || []).filter((s) => s.stationNm === stopName);
+      const nameMatches = (posData?.msgBody?.itemList || []).filter((s) => cleanStopName(s.stationNm) === cleanName);
       if (nameMatches.length === 0) return null;
 
       // 이름이 일치하는 정류장 후보마다 이 버스 노선이 실제로 지나는지 확인해서
-      // busRouteId를 얻는다. 방향이 다른 동명이정류장이 여러 개 나오면(둘 다 같은
-      // 노선이 지나감) 1차 구현에서는 방향을 확정할 방법이 없어 포기한다.
+      // busRouteId를 얻는다.
       const withRoute = await Promise.all(
         nameMatches.map(async (stop) => {
           const routeUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getRouteByStation?serviceKey=${key}&arsId=${stop.arsId}&resultType=json`;
           const routeRes = await fetch(routeUrl);
           const routeData = await routeRes.json();
           const match = (routeData?.msgBody?.itemList || []).find((r) => r.busRouteNm === busNo);
-          return match ? { arsId: stop.arsId, busRouteId: match.busRouteId } : null;
+          return match ? { stop, arsId: stop.arsId, busRouteId: match.busRouteId } : null;
         })
       );
       const resolved = withRoute.filter(Boolean);
       if (resolved.length === 1) return resolved[0];
       if (resolved.length > 1) {
-        console.error('[kakao] 동명이정류장 다수 발견, 방향 특정 불가(순서비교 미구현) - mock 폴백', {
-          stopName, busNo, candidates: resolved,
+        const picked = pickByTravelDirection(resolved, points);
+        if (picked) return picked;
+        console.error('[kakao] 동명이정류장 방향 판별 실패, mock 폴백', {
+          stopName, busNo, candidates: resolved.map((r) => r.arsId),
         });
       }
       return null;
@@ -123,18 +166,29 @@ async function mapStepToSubPath(step) {
   }
   if (p.type === 'SUBWAY') {
     const lineName = p.vehicles?.[0]?.name;
+    const nextStopName = stops[1]?.name; // 다음 역(방향 판별용, 없으면 이 leg가 1구간뿐)
     // 1~9호선이면 서울교통공사 시간표(ODsay 안 씀)를 우선 시도하고, 그 외 노선이거나
     // 역을 못 찾으면 ODsay searchStation으로 폴백한다.
-    const seoulMetroFrCode = await seoulMetroSchedule.findFrCode(startName, lineName);
-    if (seoulMetroFrCode) {
-      return { ...base, trafficType: TRAFFIC_TYPE.SUBWAY, lane: [{ name: lineName }], seoulMetroFrCode };
+    const [own, next] = await Promise.all([
+      seoulMetroSchedule.findStation(startName, lineName),
+      nextStopName ? seoulMetroSchedule.findStation(nextStopName, lineName) : Promise.resolve(null),
+    ]);
+    if (own?.frCode) {
+      return {
+        ...base,
+        trafficType: TRAFFIC_TYPE.SUBWAY,
+        lane: [{ name: lineName }],
+        seoulMetroFrCode: own.frCode,
+        seoulMetroOwnCd: own.stationCd,
+        seoulMetroNextCd: next?.stationCd ?? null,
+      };
     }
     const startID = await resolveSubwayStationId(startName);
     return { ...base, trafficType: TRAFFIC_TYPE.SUBWAY, lane: [{ name: lineName }], startID };
   }
   // BUS
   const busNo = p.vehicles?.[0]?.name;
-  const ids = await resolveBusIds(startName, startX, startY, busNo);
+  const ids = await resolveBusIds(startName, points, busNo);
   return {
     ...base,
     trafficType: TRAFFIC_TYPE.BUS,

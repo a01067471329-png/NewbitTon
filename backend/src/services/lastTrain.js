@@ -196,7 +196,13 @@ async function lookupLastDeparture(sp, now) {
     // 카카오 라우팅 모드에서 1~9호선으로 판별된 구간은 ODsay를 아예 안 쓰고
     // 서울교통공사 시간표로 처리한다(providers/kakao.js 참고).
     if (sp.seoulMetroFrCode) {
-      return (await seoulMetroSchedule.lookupLastDeparture(sp.seoulMetroFrCode, now)) || MOCK_SUBWAY_LAST;
+      const dep = await seoulMetroSchedule.lookupLastDeparture(
+        sp.seoulMetroFrCode,
+        now,
+        sp.seoulMetroOwnCd,
+        sp.seoulMetroNextCd
+      );
+      return dep || MOCK_SUBWAY_LAST;
     }
     return (await lookupSubwayLastDeparture(sp.startID, sp.wayCode, now)) || MOCK_SUBWAY_LAST;
   }

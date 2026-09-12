@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
-import BackButton from '../components/BackButton';
+import ScreenHeader from '../components/ScreenHeader';
 import RouteMap from '../components/RouteMap';
 import RouteCard from '../components/RouteCard';
 import { fetchRoutes } from '../api';
@@ -58,7 +58,7 @@ export default function RouteSelect() {
   if (!trip) {
     return (
       <AppShell>
-        <BackButton to="/" label="온보딩" />
+        <ScreenHeader backTo="/" backLabel="온보딩" />
         <div className="route-select__empty">
           <p>출발지·도착지 정보가 없어요. 온보딩부터 다시 시작해주세요.</p>
           <button type="button" className="cta-button" onClick={() => navigate('/')}>
@@ -78,7 +78,7 @@ export default function RouteSelect() {
 
   return (
     <AppShell>
-      <BackButton to="/" label="온보딩" />
+      <ScreenHeader backTo="/" backLabel="온보딩" />
       <header className="route-select__header">
         <h1 className="route-select__title">이동 방법을 선택하세요</h1>
         <p className="route-select__subtitle">{trip.destination?.name}까지</p>

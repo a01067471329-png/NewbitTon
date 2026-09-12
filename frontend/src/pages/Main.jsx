@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
-import BackButton from '../components/BackButton';
+import ScreenHeader from '../components/ScreenHeader';
 import RouteTimeline from '../components/RouteTimeline';
 import PushSubscribeBanner from '../components/PushSubscribeBanner';
 import { getCurrentTrip, saveCurrentTrip, clearCurrentTrip } from '../utils/storage';
@@ -71,6 +71,7 @@ export default function Main() {
   if (!trip) {
     return (
       <AppShell>
+        <ScreenHeader />
         <div className="main-empty">
           <p>출발지·도착지 정보가 없어요. 온보딩부터 다시 시작해주세요.</p>
           <button type="button" className="cta-button" onClick={() => navigate('/')}>
@@ -84,7 +85,7 @@ export default function Main() {
   if (!route) {
     return (
       <AppShell>
-        <BackButton to="/routes" label="경로 선택" />
+        <ScreenHeader backTo="/routes" backLabel="경로 선택" />
         <div className="main-empty">
           <p>선택된 경로가 없어요. 경로를 먼저 선택해주세요.</p>
           <button type="button" className="cta-button" onClick={() => navigate('/routes')}>
@@ -157,6 +158,7 @@ export default function Main() {
 
   return (
     <AppShell>
+      <ScreenHeader />
       <section className={`main-banner main-banner--${mood}`}>
         <p className="main-banner__headline">{overdue ? '출발 시각이 지났어요' : copy.headline}</p>
         <p className="main-banner__deadline">

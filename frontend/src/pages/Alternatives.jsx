@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
-import BackButton from '../components/BackButton';
+import ScreenHeader from '../components/ScreenHeader';
 import AlternativeCard from '../components/AlternativeCard';
 import { fetchAlternatives } from '../api';
 import { waitingSpotIcon } from '../utils/alternativesFormat';
@@ -41,7 +41,7 @@ export default function Alternatives() {
 
   return (
     <AppShell>
-      <BackButton to="/main" label="메인 화면" />
+      <ScreenHeader backTo="/main" backLabel="메인 화면" />
 
       <header className="alternatives__header">
         <h1 className="alternatives__title">😢 막차를 놓쳤다면</h1>

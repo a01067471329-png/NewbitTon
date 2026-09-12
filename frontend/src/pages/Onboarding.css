@@ -15,11 +15,18 @@
 }
 
 .onboarding__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin: 0 0 14px;
+  padding: 4px 12px;
+
+  border-radius: 999px;
+  background: var(--color-primary-bg);
 
   font-size: 13px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: -0.2px;
 
   color: #5B7CFF;
 }

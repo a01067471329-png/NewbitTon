@@ -104,7 +104,7 @@ return (
   <AppShell>
     <header className="onboarding__header">
       <div className="onboarding__hero-copy">
-        <p className="onboarding__eyebrow">NEWBITON</p>
+        <p className="onboarding__eyebrow">🐯 막차랑이</p>
 
         <h1 className="onboarding__title">
           <span className="onboarding__title-accent">오늘 막차,</span>

@@ -96,6 +96,11 @@
   color: var(--color-danger);
 }
 
+/* 첫 탑승("탑승 여유")은 환승 위험 표시가 아니라 참고 정보라 danger 색을 쓰지 않는다. */
+.timeline-row__gap--board {
+  color: var(--color-text-muted);
+}
+
 .timeline-row--point .timeline-row__label {
   font-weight: 700;
 }

@@ -87,8 +87,15 @@ export default function RouteTimeline({ steps, now, onMissed }) {
                 <span className="timeline-row__label">
                   {legIcon(step.mode)} {step.line} 탑승 ({step.station})
                 </span>
-                {step.isTransfer && (
+                {step.isTransfer ? (
                   <span className="timeline-row__gap">환승 여유 {step.minutesLeft}분</span>
+                ) : (
+                  // 첫 탑승은 환승이 아니라 "탑승 가능 시간까지"와 같은 값(상단 배너의
+                  // 실시간 카운트다운과 동일한 기준, step.passExpectedAt === departureDeadline)
+                  // 이므로 "탑승 여유"로 구분해 표시한다.
+                  <span className="timeline-row__gap timeline-row__gap--board">
+                    탑승 여유 {Math.max(0, Math.round((step.passExpectedAt - now) / 60000))}분
+                  </span>
                 )}
               </div>
               <button type="button" className="timeline-row__missed" onClick={() => onMissed(step)}>

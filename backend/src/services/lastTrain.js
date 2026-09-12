@@ -17,6 +17,7 @@
 
 const { classifySafety } = require('../utils/safety');
 const { createCache } = require('../lib/cache');
+const seoulMetroSchedule = require('./seoulMetroSchedule');
 
 // trafficType: 1 = 지하철, 2 = 버스, 3 = 도보/환승 (ODsay 관례를 따름)
 const TRAFFIC_TYPE = { SUBWAY: 1, BUS: 2, TRANSFER: 3 };
@@ -192,6 +193,11 @@ async function lookupBusLastDeparture(busSubPath) {
 async function lookupLastDeparture(sp, now) {
   if (!sp) return MOCK_SUBWAY_LAST;
   if (sp.trafficType === TRAFFIC_TYPE.SUBWAY) {
+    // 카카오 라우팅 모드에서 1~9호선으로 판별된 구간은 ODsay를 아예 안 쓰고
+    // 서울교통공사 시간표로 처리한다(providers/kakao.js 참고).
+    if (sp.seoulMetroFrCode) {
+      return (await seoulMetroSchedule.lookupLastDeparture(sp.seoulMetroFrCode, now)) || MOCK_SUBWAY_LAST;
+    }
     return (await lookupSubwayLastDeparture(sp.startID, sp.wayCode, now)) || MOCK_SUBWAY_LAST;
   }
   if (sp.trafficType === TRAFFIC_TYPE.BUS) {

@@ -5,6 +5,11 @@ const { getWalkSpeedFactor } = require('../utils/walkSpeed');
 
 const router = express.Router();
 
+// ODsay는 경로 후보를 20개 이상 돌려주는데, 후보 하나마다 구간별 막차 조회(지하철 시간표)가
+// 따라붙어서 검색 한 번에 일일 한도(30건)의 절반 가까이 소모된다. 상위 몇 개만 처리해서
+// 호출량을 묶어둔다.
+const MAX_CANDIDATES = 5;
+
 // GET /api/routes?startX=&startY=&endX=&endY=&walkSpeed=느림|보통|빠름|맞춤형&personalFactor=
 router.get('/', async (req, res) => {
   const { startX, startY, endX, endY, walkSpeed, personalFactor } = req.query;
@@ -23,7 +28,7 @@ router.get('/', async (req, res) => {
 
     const candidates = (
       await Promise.all(
-        rawPaths.map((rawPath, i) =>
+        rawPaths.slice(0, MAX_CANDIDATES).map((rawPath, i) =>
           buildCandidate(rawPath, { walkSpeedFactor, now, routeId: `r${i + 1}` })
         )
       )

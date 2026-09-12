@@ -12,9 +12,16 @@ const { startPushScheduler } = require('./services/pushScheduler');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// CORS_ORIGIN은 콤마로 여러 origin을 나열할 수 있다(예: 로컬 개발 주소 + 배포된 프론트 주소를
+// 동시에). 콤마가 없으면 예전처럼 단일 origin(또는 "*")으로 취급한다.
+function parseCorsOrigin(raw) {
+  if (!raw || !raw.includes(',')) return raw || '*';
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: parseCorsOrigin(process.env.CORS_ORIGIN),
   })
 );
 app.use(express.json());
@@ -24,17 +31,6 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'newbiton-backend', time: new Date().toISOString() });
-});
-
-// 임시 디버그용: 이 서버가 외부 API(ODsay 등)를 호출할 때 실제로 어떤 공인 IP로
-// 나가는지 확인하기 위함 (Render Server IP 화이트리스트 등록용). 확인 끝나면 제거할 것.
-app.get('/api/_debug/my-ip', async (req, res) => {
-  try {
-    const ip = await fetch('https://api.ipify.org').then((r) => r.text());
-    res.json({ ip });
-  } catch (err) {
-    res.status(502).json({ error: err.message });
-  }
 });
 
 app.use('/api/geocode', geocodeRouter);

@@ -36,15 +36,23 @@ export function buildRouteTimeline(selectedRoute, trip) {
     { id: 'start-point', kind: 'point', role: 'start', name: start?.name || '출발지' },
   ];
 
+  // "바로 앞 leg가 transfer인가"만으로 환승 탑승을 판단하면 안 된다 — ODsay 실경로는
+  // 출발지에서 첫 역까지 걷는 도보 구간도 별도의 transfer leg로 내려주는 경우가
+  // 있어서, 그 경우 첫 대중교통 탑승까지 "환승"으로 잘못 인식된다. 그래서 "지금까지
+  // 대중교통을 한 번이라도 탔는지"로 판단한다 — 앞에 도보 leg가 있어도 첫 번째
+  // 대중교통 탑승은 항상 isTransferBoard=false다.
+  let hasBoardedTransit = false;
+
   legs.forEach((leg, idx) => {
     if (leg.mode === 'transfer') return;
 
-    const isTransferBoard = idx > 0 && legs[idx - 1]?.mode === 'transfer';
+    const isTransferBoard = hasBoardedTransit;
     const gap = isTransferBoard ? transferGapByLegIdx.get(idx - 1) : null;
     const boardCumulative = idx === 0 ? 0 : cumulativeAfter[idx - 1];
+    hasBoardedTransit = true;
 
     steps.push({
-      id: gap?.segmentId || (idx === 0 ? 'start' : `t${idx}`),
+      id: isTransferBoard ? gap?.segmentId || `t${idx}` : 'start',
       kind: 'board',
       mode: leg.mode,
       line: leg.line,

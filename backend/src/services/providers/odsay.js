@@ -8,7 +8,7 @@
  * 필요하면 이 파일의 parseOdsayResponse()만 수정하면 됩니다 (다른 코드는 영향 없음).
  */
 
-const { createCache } = require('../lib/cache');
+const { createCache } = require('../../lib/cache');
 
 const ODSAY_URL = 'https://api.odsay.com/v1/api/searchPubTransPathT';
 

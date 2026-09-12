@@ -107,7 +107,62 @@ function pickByTravelDirection(candidates, points) {
   return null;
 }
 
-async function resolveBusIds(stopName, points, busNo) {
+// TOPIS 정류장 첫차시각("HHMMSS") -> 분
+function busTimeToMinutes(hhmmss) {
+  const s = String(hhmmss || '').trim();
+  if (s.length < 4) return null;
+  const h = Number(s.slice(0, 2));
+  const m = Number(s.slice(2, 4));
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+
+async function stopsNear(key, x, y, cleanName, radius = 200) {
+  const url = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByPos?serviceKey=${key}&tmX=${x}&tmY=${y}&radius=${radius}&resultType=json`;
+  const data = await (await fetch(url)).json();
+  return (data?.msgBody?.itemList || []).filter((s) => cleanStopName(s.stationNm) === cleanName);
+}
+
+async function firstBusMinutes(key, arsId, busRouteId) {
+  const url = `http://ws.bus.go.kr/api/rest/stationinfo/getBustimeByStation?serviceKey=${key}&arsId=${arsId}&busRouteId=${busRouteId}&resultType=json`;
+  const data = await (await fetch(url)).json();
+  return busTimeToMinutes(data?.msgBody?.itemList?.[0]?.firstBusTm);
+}
+
+/**
+ * 동명이정류장(도로 반대편의 다른 방향 정류장)을 실제 운행 순서로 확정한다.
+ * 같은 노선에서 "우리 정류장 -> 다음 정류장"이 실제 진행 순서라면 다음 정류장의
+ * 첫차 시각이 우리 정류장보다 조금 늦다. 반대 방향 폴끼리 짝지으면 음수가 되고,
+ * 엉뚱한 조합(정방향 폴 + 역방향 폴)은 한 바퀴 차이만큼(수십 분) 벌어진다.
+ * 실측(140번 강남역/논현역): 정답 조합 +1.7분, 반대 방향 -2.5분, 엉뚱한 조합 ±56분.
+ */
+async function pickByRunOrder(key, candidates, nextStopName, points) {
+  const cleanNext = cleanStopName(nextStopName);
+  if (!cleanNext || !Array.isArray(points) || points.length < 4) return null;
+  try {
+    // 다음 정류장은 경로 좌표를 따라 조금 진행한 지점 근처에서 찾는다.
+    const probe = points[Math.floor(points.length * 0.08)] || points[1];
+    const nextCands = await stopsNear(key, probe[0], probe[1], cleanNext);
+    if (!nextCands.length) return null;
+
+    for (const cand of candidates) {
+      const ourFirst = await firstBusMinutes(key, cand.arsId, cand.busRouteId);
+      if (ourFirst === null) continue;
+      for (const nextStop of nextCands) {
+        const nextFirst = await firstBusMinutes(key, nextStop.arsId, cand.busRouteId);
+        if (nextFirst === null) continue;
+        const diff = nextFirst - ourFirst;
+        // 인접 정류장 사이의 정상적인 시간차(작은 양수)일 때만 정방향으로 인정
+        if (diff > 0 && diff <= 15) return cand;
+      }
+    }
+  } catch (err) {
+    console.error('[kakao] 버스 운행순서 방향 판별 실패:', nextStopName, err.message);
+  }
+  return null;
+}
+
+async function resolveBusIds(stopName, nextStopName, points, busNo) {
   const key = process.env.BUS_STATION_INFO_API_KEY;
   const cleanName = cleanStopName(stopName);
   const [x, y] = points?.[0] || [];
@@ -115,10 +170,7 @@ async function resolveBusIds(stopName, points, busNo) {
   const cacheKey = `${cleanName}|${busNo}|${Number(x).toFixed(5)},${Number(y).toFixed(5)}`;
   return busIdCache.wrap(cacheKey, async () => {
     try {
-      const posUrl = `http://ws.bus.go.kr/api/rest/stationinfo/getStationByPos?serviceKey=${key}&tmX=${x}&tmY=${y}&radius=150&resultType=json`;
-      const posRes = await fetch(posUrl);
-      const posData = await posRes.json();
-      const nameMatches = (posData?.msgBody?.itemList || []).filter((s) => cleanStopName(s.stationNm) === cleanName);
+      const nameMatches = await stopsNear(key, x, y, cleanName, 150);
       if (nameMatches.length === 0) return null;
 
       // 이름이 일치하는 정류장 후보마다 이 버스 노선이 실제로 지나는지 확인해서
@@ -135,6 +187,10 @@ async function resolveBusIds(stopName, points, busNo) {
       const resolved = withRoute.filter(Boolean);
       if (resolved.length === 1) return resolved[0];
       if (resolved.length > 1) {
+        // 1순위: 실제 운행 순서(첫차 시각 비교)로 확정 — 추측이 아님
+        const byOrder = await pickByRunOrder(key, resolved, nextStopName, points);
+        if (byOrder) return byOrder;
+        // 2순위: 기하학적 판별(우측통행 기준 진행방향 오른쪽)
         const picked = pickByTravelDirection(resolved, points);
         if (picked) return picked;
         console.error('[kakao] 동명이정류장 방향 판별 실패, mock 폴백', {
@@ -179,8 +235,8 @@ async function mapStepToSubPath(step) {
         trafficType: TRAFFIC_TYPE.SUBWAY,
         lane: [{ name: lineName }],
         seoulMetroFrCode: own.frCode,
-        seoulMetroOwnCd: own.stationCd,
-        seoulMetroNextCd: next?.stationCd ?? null,
+        // 다음 역 코드가 있으면 같은 열차번호의 도착시각 비교로 진행 방향을 확정한다.
+        seoulMetroNextFrCode: next?.frCode ?? null,
       };
     }
     const startID = await resolveSubwayStationId(startName);
@@ -188,7 +244,7 @@ async function mapStepToSubPath(step) {
   }
   // BUS
   const busNo = p.vehicles?.[0]?.name;
-  const ids = await resolveBusIds(startName, points, busNo);
+  const ids = await resolveBusIds(startName, stops[1]?.name, points, busNo);
   return {
     ...base,
     trafficType: TRAFFIC_TYPE.BUS,

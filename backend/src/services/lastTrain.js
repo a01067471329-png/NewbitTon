@@ -199,8 +199,7 @@ async function lookupLastDeparture(sp, now) {
       const dep = await seoulMetroSchedule.lookupLastDeparture(
         sp.seoulMetroFrCode,
         now,
-        sp.seoulMetroOwnCd,
-        sp.seoulMetroNextCd
+        sp.seoulMetroNextFrCode
       );
       return dep || MOCK_SUBWAY_LAST;
     }

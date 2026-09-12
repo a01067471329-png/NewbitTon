@@ -1,72 +1,145 @@
 .main-banner {
-  padding: 18px;
+  position: relative;
+
+  min-height: 180px;
+  padding: 0;
+
   border-radius: var(--radius-lg);
+  overflow: hidden;
+
+  background: #172033;
+}
+
+/* 실제 배경 이미지 */
+.main-banner__background {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+  object-position: center;
+}
+
+/*
+  왼쪽 텍스트를 읽기 쉽게 만드는 그라데이션.
+  오른쪽 호랑이는 최대한 그대로 보이게 함.
+*/
+.main-banner__shade {
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.96) 0%,
+    rgba(255, 255, 255, 0.88) 35%,
+    rgba(255, 255, 255, 0.32) 61%,
+    rgba(255, 255, 255, 0) 78%
+  );
+}
+
+/* 글자 영역 */
+.main-banner__content {
+  position: relative;
+  z-index: 2;
+
+  width: 68%;
+  min-height: 180px;
+
+  padding: 20px 0 18px 18px;
+
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.main-banner--safe {
-  background: var(--color-safe-bg);
-}
-
-.main-banner--caution {
-  background: var(--color-caution-bg);
-}
-
-.main-banner--danger {
-  background: var(--color-danger-bg);
+  align-items: flex-start;
 }
 
 .main-banner__headline {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 700;
+  margin: 0 0 9px;
+
+  font-size: 13px;
+  font-weight: 800;
 }
 
+/* 안전 */
 .main-banner--safe .main-banner__headline {
-  color: var(--color-safe);
+  color: #1CAA63;
 }
 
+/* 주의 */
 .main-banner--caution .main-banner__headline {
-  color: var(--color-caution);
+  color: #E88914;
 }
 
+/* 위험 */
 .main-banner--danger .main-banner__headline {
-  color: var(--color-danger);
+  color: #E0473F;
 }
 
 .main-banner__deadline {
-  margin: 2px 0 0;
-  font-size: 24px;
+  margin: 0;
+
+  font-size: 20px;
+  line-height: 1.3;
   font-weight: 800;
-  color: var(--color-text);
+
+  color: #172033;
 }
 
 .main-banner__deadline strong {
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .main-banner__countdown {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  margin: 7px 0 0;
+
+  font-size: 13px;
+  font-weight: 650;
+
+  color: #596273;
 }
 
-.main-banner__character {
-  margin-top: 6px;
-  display: flex;
+.main-banner__status {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--color-text);
+
+  margin-top: 14px;
+
+  padding: 7px 11px;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.88);
+
+  box-shadow: 0 3px 12px rgba(23, 32, 51, 0.08);
+
+  color: #172033;
+
+  font-size: 11.5px;
+  font-weight: 750;
+
+  backdrop-filter: blur(4px);
 }
 
-.main-banner__emoji {
-  font-size: 26px;
-  line-height: 1;
+/* 작은 휴대폰 대응 */
+@media (max-width: 360px) {
+  .main-banner {
+    min-height: 165px;
+  }
+
+  .main-banner__content {
+    width: 70%;
+    min-height: 165px;
+    padding: 17px 0 15px 15px;
+  }
+
+  .main-banner__deadline {
+    font-size: 18px;
+  }
+
+  .main-banner__deadline strong {
+    font-size: 21px;
+  }
 }
 
 .route-summary {

@@ -5,13 +5,30 @@ import './RouteTimeline.css';
 // 역명은 괄호로 표시하고, 교통수단이 바뀌는 환승 지점 바로 위에는 가로 구분선을
 // 넣어 "여기서 갈아탄다"는 걸 시각적으로 분리한다. 환승 직후 탑승 지점만 빨간색으로
 // 강조하고 "환승 여유 N분"을 표시하며, "놓치면?" 버튼은 모든 탑승 지점에 붙는다.
+// 이 줄(카드)의 세로선을 위/아래 여백(padding)까지 늘려서 옆 카드의 선과 맞닿게
+// 할지 판단한다. 환승 구분선이나 출발/도착(point) 카드와 맞닿는 방향으로는 늘리지
+// 않는다 — 그 자리는 의도적으로 선을 끊어두는 지점이기 때문.
+function lineExtension(step, prev, next) {
+  const extendUp = !(step.isTransfer || !prev || prev.kind === 'point');
+  const extendDown = !(next?.isTransfer || !next || next.kind === 'point');
+  return (
+    (extendUp ? ' timeline-row--extend-up' : '') + (extendDown ? ' timeline-row--extend-down' : '')
+  );
+}
+
 export default function RouteTimeline({ steps, now, onMissed }) {
   return (
     <div className="route-timeline">
-      {steps.map((step) => {
+      {steps.map((step, idx) => {
+        const prev = steps[idx - 1];
+        const next = steps[idx + 1];
+
         if (step.kind === 'alight') {
           return (
-            <div className="timeline-row timeline-row--alight" key={step.id}>
+            <div
+              className={'timeline-row timeline-row--alight' + lineExtension(step, prev, next)}
+              key={step.id}
+            >
               <div className="timeline-row__rail">
                 <span className="timeline-dot timeline-dot--alight" />
               </div>
@@ -59,7 +76,8 @@ export default function RouteTimeline({ steps, now, onMissed }) {
               className={
                 'timeline-row timeline-row--board' +
                 (step.isTransfer ? ' timeline-row--transfer' : '') +
-                (overdue ? ' timeline-row--overdue' : '')
+                (overdue ? ' timeline-row--overdue' : '') +
+                lineExtension(step, prev, next)
               }
             >
               <div className="timeline-row__rail">

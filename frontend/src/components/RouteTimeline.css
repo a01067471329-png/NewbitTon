@@ -4,11 +4,12 @@
 }
 
 .timeline-row {
+  --row-v-pad: 9px;
   display: grid;
   grid-template-columns: 22px 1fr auto;
   align-items: center;
   column-gap: 10px;
-  padding: 9px 6px;
+  padding: var(--row-v-pad) 6px;
   border-radius: var(--radius-md);
 }
 
@@ -34,6 +35,18 @@
    사이에만 세로선이 이어지게 한다. */
 .timeline-row--point .timeline-row__rail::before {
   display: none;
+}
+
+/* 기본적으로 선은 이 줄의 내용 영역(패딩 제외)까지만 그려진다. 옆 카드와 맞닿는
+   부분은 위/아래 패딩 안쪽까지 선을 늘려서, 두 동그라미 사이 세로선이 끊김 없이
+   하나로 이어지게 한다 (환승 구분선·출발/도착 지점과 맞닿는 방향은 의도적으로
+   늘리지 않는다 — RouteTimeline.jsx의 lineExtension() 참고). */
+.timeline-row--extend-up .timeline-row__rail::before {
+  top: calc(-1 * var(--row-v-pad));
+}
+
+.timeline-row--extend-down .timeline-row__rail::before {
+  bottom: calc(-1 * var(--row-v-pad));
 }
 
 .timeline-dot {

@@ -8,6 +8,12 @@ export function alternativeIcon(type) {
   return '🚏';
 }
 
+export function waitingSpotIcon(type) {
+  if (type === 'cafe_24h') return '☕';
+  if (type === 'jjimjilbang') return '♨️';
+  return '🏪';
+}
+
 const kstTimeFormatter = new Intl.DateTimeFormat('ko-KR', {
   timeZone: 'Asia/Seoul',
   hour: '2-digit',

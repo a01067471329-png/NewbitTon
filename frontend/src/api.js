@@ -158,7 +158,11 @@ async function mockFetchAlternatives(segmentId) {
       { type: 'taxi', name: '택시 승차 지점', walkMin: 2 },
       { type: 'wait_first_train', name: '첫차까지 대기', firstTrainTime: null },
     ],
-    waitingSpots: [{ name: '24시간 편의점', walkMin: 1 }],
+    waitingSpots: [
+      { type: 'convenience_store', name: '24시간 편의점', walkMin: 1 },
+      { type: 'cafe_24h', name: '24시간 카페', walkMin: 3 },
+      { type: 'jjimjilbang', name: '불가마 사우나', walkMin: 6 },
+    ],
     costComparison: null,
   };
 }

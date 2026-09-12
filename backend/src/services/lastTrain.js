@@ -152,6 +152,15 @@ async function lookupBusLastDepartureFromTopis(arsId, busRouteId) {
   // 막차 시(hour)가 첫차 시보다 작으면 "오늘 새벽에 이미 지난 시각"이 아니라
   // "오늘 밤 자정 이후"로 해석해 24시간을 더한다.
   const adjusted = first && last.hour < first.hour ? { hour: last.hour + 24, minute: last.minute } : last;
+  // TODO(임시 디버그): ODsay가 확정해준 startArsID가 실제로 어느 정류장인지, TOPIS 원본
+  // 시각과 함께 검증하기 위한 로그. 검증 끝나면 제거할 것.
+  console.error('[DEBUG lastTrain][bus/topis]', {
+    arsId,
+    busRouteId,
+    rawFirstBusTm: result?.firstBusTm,
+    rawLastBusTm: result?.lastBusTm,
+    adjusted,
+  });
   if (!isPlausibleLastDeparture(adjusted, BUS_LAST_DEPARTURE_RANGE)) {
     console.error('[lastTrain] 비정상적인 버스 막차시각(TOPIS) 감지, 폴백으로 대체', {
       arsId,
@@ -166,6 +175,13 @@ async function lookupBusLastDepartureFromTopis(arsId, busRouteId) {
 async function lookupBusLastDeparture(busSubPath) {
   try {
     const lane = busSubPath?.lane?.[0];
+    console.error('[DEBUG lastTrain][bus/leg]', {
+      busNo: lane?.busNo,
+      startName: busSubPath?.startName,
+      endName: busSubPath?.endName,
+      startArsID: busSubPath?.startArsID,
+      busLocalBlID: lane?.busLocalBlID,
+    });
     return await lookupBusLastDepartureFromTopis(busSubPath?.startArsID, lane?.busLocalBlID);
   } catch (err) {
     console.error('[lastTrain] 버스 막차 조회 실패:', err.message);

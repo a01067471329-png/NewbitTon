@@ -1,0 +1,9 @@
+{
+  "name": "Newbiton · 막차 알리미",
+  "short_name": "Newbiton",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}

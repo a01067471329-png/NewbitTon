@@ -26,6 +26,17 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'newbiton-backend', time: new Date().toISOString() });
 });
 
+// 임시 디버그용: 이 서버가 외부 API(ODsay 등)를 호출할 때 실제로 어떤 공인 IP로
+// 나가는지 확인하기 위함 (Render Server IP 화이트리스트 등록용). 확인 끝나면 제거할 것.
+app.get('/api/_debug/my-ip', async (req, res) => {
+  try {
+    const ip = await fetch('https://api.ipify.org').then((r) => r.text());
+    res.json({ ip });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 app.use('/api/geocode', geocodeRouter);
 app.use('/api/routes', routesRouter);
 app.use('/api/push', pushRouter);

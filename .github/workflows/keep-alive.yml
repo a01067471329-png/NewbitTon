@@ -1,0 +1,16 @@
+name: Keep Render backend awake
+
+# Render 무료 플랜은 약 15분간 요청이 없으면 슬립 모드로 들어간다.
+# 10분마다 /health를 호출해서 데모 시간대(오늘 하루) 동안 깨어있게 유지한다.
+# workflow_dispatch로 필요하면 수동으로도 즉시 실행 가능.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: curl -sf https://newbitton.onrender.com/health

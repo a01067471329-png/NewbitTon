@@ -1,142 +1,507 @@
+/* ================================
+   HERO
+================================ */
+
 .onboarding__header {
-  padding-top: 4px;
+  position: relative;
+  min-height: 235px;
+  padding: 8px 2px 0;
+  overflow: hidden;
+}
+
+.onboarding__hero-copy {
+  position: relative;
+  z-index: 2;
 }
 
 .onboarding__eyebrow {
-  margin: 0 0 6px;
-  font-size: 12.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--color-primary);
-  text-transform: uppercase;
+  margin: 0 0 14px;
+
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+
+  color: #5B7CFF;
 }
 
 .onboarding__title {
   margin: 0;
-  font-size: 21px;
-  line-height: 1.4;
-  white-space: pre-line;
+
+  font-size: 27px;
+  line-height: 1.32;
+  letter-spacing: -0.8px;
+  font-weight: 800;
+
+  color: #172033;
+}
+
+.onboarding__title-accent {
+  position: relative;
+  z-index: 1;
+}
+
+.onboarding__title-accent::after {
+  content: '';
+
+  position: absolute;
+  z-index: -1;
+
+  left: 0;
+  right: -3px;
+  bottom: 1px;
+
+  height: 8px;
+
+  border-radius: 999px;
+
+  background: rgba(91, 124, 255, 0.14);
+}
+
+.onboarding__subtitle {
+  position: relative;
+  z-index: 2;
+
+  margin: 16px 0 0;
+
+  font-size: 13.5px;
+  line-height: 1.65;
+  font-weight: 500;
+
+  color: #7B8495;
+}
+
+.onboarding__hero-art {
+  position: absolute;
+
+  right: -2px;
+  bottom: 0;
+
+  width: 145px;
+  height: 160px;
+
+  z-index: 1;
+}
+
+.onboarding__moon {
+  position: absolute;
+
+  width: 42px;
+  height: 42px;
+
+  top: 0;
+  right: 42px;
+
+  border-radius: 50%;
+
+  background: #EEF1FF;
+}
+
+.onboarding__moon::after {
+  content: '';
+
+  position: absolute;
+
+  width: 35px;
+  height: 35px;
+
+  top: -3px;
+  left: 12px;
+
+  border-radius: 50%;
+
+  background: #F7F8FC;
+}
+
+.onboarding__tiger {
+  position: absolute;
+
+  right: 0;
+  bottom: 0;
+
+  width: 135px;
+  height: 135px;
+
+  object-fit: contain;
+}
+
+
+/* ================================
+   CARDS
+================================ */
+
+.onboarding__card {
+  padding: 18px;
+
+  border-radius: 22px;
+
+  background: #FFFFFF;
+
+  border: 1px solid rgba(230, 233, 240, 0.65);
+
+  box-shadow:
+    0 8px 28px rgba(23, 32, 51, 0.055);
 }
 
 .onboarding__field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+}
+
+.onboarding__section-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.onboarding__section-icon {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  font-size: 17px;
+}
+
+.onboarding__section-icon--blue {
+  background: #EEF1FF;
+}
+
+.onboarding__section-icon--orange {
+  background: #FFF2E9;
 }
 
 .onboarding__label {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--color-text);
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.35px;
+
+  color: #172033;
 }
 
-.onboarding__helper {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--color-text-muted);
-}
 
-.onboarding__helper--muted {
-  background: #f4f5f7;
-  padding: 8px 10px;
-  border-radius: var(--radius-md);
-}
+/* ================================
+   INPUTS
+================================ */
 
 .location-badge {
+  width: 100%;
+  min-height: 58px;
+
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 13px 14px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
+
+  padding: 0 16px;
+
+  border-radius: 16px;
+
+  border: 1px solid #E6E9F0;
+
+  background: #FAFBFD;
+
+  font-size: 15px;
   font-weight: 500;
-  border: 1px solid var(--color-border);
 }
 
 .location-badge--pending {
-  color: var(--color-text-muted);
-  background: #fafbfc;
+  color: #7B8495;
 }
 
 .location-badge--ok {
-  color: var(--color-primary);
-  background: var(--color-primary-bg);
-  border-color: var(--color-primary-bg);
+  color: #26334D;
+
+  background: #EEF1FF;
+
+  border-color: rgba(91, 124, 255, 0.22);
+}
+
+/* PlaceSearchField 컴포넌트를
+   온보딩 안에서만 새 스타일로 덮어쓰기 */
+.onboarding__card .place-search__input {
+  width: 100%;
+  height: 58px;
+
+  padding: 0 16px;
+
+  border: 1px solid #E6E9F0;
+
+  border-radius: 16px;
+
+  background: #FAFBFD;
+
+  color: #111827;
+
+  font-size: 15px;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.onboarding__card .place-search__input::placeholder {
+  color: #9AA3B2;
+}
+
+.onboarding__card .place-search__input:focus {
+  outline: none;
+
+  background: #FFFFFF;
+
+  border-color: #5B7CFF;
+
+  box-shadow:
+    0 0 0 3px rgba(91, 124, 255, 0.10);
 }
 
 .location-edit-link {
   align-self: flex-start;
-  padding: 2px 4px;
+
+  padding: 2px 3px;
+
   border: none;
+
   background: transparent;
-  color: var(--color-primary);
+
+  color: #5B7CFF;
+
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 650;
+
   cursor: pointer;
 }
 
+
+/* ================================
+   WALK SPEED
+================================ */
+
 .walk-speed-group {
   display: grid;
+
   grid-template-columns: repeat(4, 1fr);
+
   gap: 8px;
 }
 
 .walk-speed-btn {
-  padding: 12px 4px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: #fafbfc;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text);
+  min-height: 52px;
+
+  padding: 0 4px;
+
+  border-radius: 15px;
+
+  border: 1px solid #E6E9F0;
+
+  background: #FFFFFF;
+
+  color: #172033;
+
+  font-size: 13.5px;
+  font-weight: 700;
+
   cursor: pointer;
+
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease,
+    border 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.walk-speed-btn:active {
+  transform: scale(0.97);
 }
 
 .walk-speed-btn--active {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
+  background: #5B7CFF;
+
+  border-color: #5B7CFF;
+
+  color: #FFFFFF;
+
+  box-shadow:
+    0 6px 16px rgba(91, 124, 255, 0.24);
 }
+
+
+/* ================================
+   HELP TEXT
+================================ */
+
+.onboarding__helper {
+  margin: 0;
+
+  font-size: 12.5px;
+  line-height: 1.5;
+
+  color: #7B8495;
+}
+
+.onboarding__helper--muted {
+  padding: 10px 12px;
+
+  border-radius: 13px;
+
+  background: #F7F8FC;
+}
+
+
+/* ================================
+   HOME SCREEN BANNER
+================================ */
 
 .home-banner {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  background: var(--color-primary-bg);
+
+  gap: 12px;
+
+  padding: 15px 16px;
+
+  border-radius: 18px;
+
+  background: #EEF1FF;
+
+  border: 1px solid rgba(91, 124, 255, 0.08);
+}
+
+.home-banner__icon {
+  flex-shrink: 0;
+
+  font-size: 20px;
 }
 
 .home-banner__text {
   flex: 1;
+
+  color: #26334D;
+
   font-size: 13px;
-  font-weight: 600;
-  color: var(--color-primary);
-  line-height: 1.4;
+  line-height: 1.5;
+  font-weight: 650;
+}
+
+.home-banner__text strong {
+  color: #5B7CFF;
 }
 
 .home-banner__dismiss {
+  width: 28px;
+  height: 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  padding: 0;
+
   border: none;
-  background: transparent;
-  color: var(--color-primary);
-  font-size: 15px;
+  border-radius: 50%;
+
+  background: rgba(91, 124, 255, 0.08);
+
+  color: #5B7CFF;
+
+  font-size: 13px;
+
   cursor: pointer;
-  padding: 2px 4px;
 }
 
+
+/* ================================
+   CTA
+================================ */
+
 .cta-button {
-  margin-top: auto;
-  padding: 15px;
+  position: relative;
+
+  width: 100%;
+  min-height: 60px;
+
+  margin-top: 2px;
+
+  padding: 0 54px;
+
   border: none;
-  border-radius: var(--radius-md);
-  background: var(--color-primary);
-  color: #fff;
-  font-size: 15.5px;
-  font-weight: 700;
+  border-radius: 18px;
+
+  background: #5B7CFF;
+
+  color: #FFFFFF;
+
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.25px;
+
   cursor: pointer;
+
+  box-shadow:
+    0 10px 24px rgba(91, 124, 255, 0.25);
+
+  transition:
+    transform 0.12s ease,
+    opacity 0.15s ease;
+}
+
+.cta-button:not(:disabled):active {
+  transform: scale(0.985);
+}
+
+.cta-button__arrow {
+  position: absolute;
+
+  right: 22px;
+
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  font-size: 22px;
 }
 
 .cta-button:disabled {
-  background: #c6cdd9;
+  /*
+   * 기본색 자체는 정확히 #5B7CFF.
+   * 비활성 상태라는 것을 보여주기 위해 투명도만 낮춤.
+   */
+  background: #5B7CFF;
+
+  opacity: 0.38;
+
+  box-shadow: none;
+
   cursor: not-allowed;
+}
+
+
+/* ================================
+   SMALL PHONES
+================================ */
+
+@media (max-width: 360px) {
+  .onboarding__title {
+    font-size: 24px;
+  }
+
+  .onboarding__hero-art {
+    width: 125px;
+  }
+
+  .onboarding__tiger {
+    width: 118px;
+    height: 118px;
+  }
+
+  .walk-speed-btn {
+    font-size: 12.5px;
+  }
 }

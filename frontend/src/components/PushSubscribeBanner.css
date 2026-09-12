@@ -1,0 +1,48 @@
+.push-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  width: 100%;
+  text-align: center;
+}
+
+.push-banner--action {
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.push-banner--action:disabled {
+  background: #c6cdd9;
+  cursor: not-allowed;
+}
+
+.push-banner--ok {
+  background: var(--color-safe-bg);
+  color: var(--color-safe);
+}
+
+.push-banner--warn {
+  background: var(--color-caution-bg);
+  color: var(--color-caution);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.push-banner__button {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--color-caution);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-caution);
+  cursor: pointer;
+}

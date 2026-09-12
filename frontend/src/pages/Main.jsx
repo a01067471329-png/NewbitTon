@@ -3,11 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import BackButton from '../components/BackButton';
 import SegmentCard from '../components/SegmentCard';
-import { getCurrentTrip, clearCurrentTrip } from '../utils/storage';
+import PushSubscribeBanner from '../components/PushSubscribeBanner';
+import { getCurrentTrip, saveCurrentTrip, clearCurrentTrip } from '../utils/storage';
 import { classifySafety } from '../utils/safety';
 import { formatCountdown } from '../utils/countdown';
 import { buildSegments } from '../utils/segments';
 import { formatKstTime, transitLegsOf, transferCountOf, legIcon } from '../utils/routeFormat';
+import { fetchVapidPublicKey, subscribePush, unsubscribePush } from '../api';
+import {
+  isPushSupported,
+  registerServiceWorker,
+  getExistingSubscription,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '../utils/push';
 import './Main.css';
 
 const MOOD_COPY = {
@@ -31,6 +40,25 @@ export default function Main() {
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // F5 Push 구독 상태 확인 — Service Worker를 등록해두고, 이미 구독돼 있는지
+  // 조회한다. 실제 구독 생성(권한 프롬프트)은 사용자가 버튼을 눌렀을 때만 한다.
+  const [pushStatus, setPushStatus] = useState('checking');
+
+  useEffect(() => {
+    if (!isPushSupported()) {
+      setPushStatus('unsupported');
+      return;
+    }
+    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+      setPushStatus('denied');
+      return;
+    }
+    registerServiceWorker()
+      .then(() => getExistingSubscription())
+      .then((sub) => setPushStatus(sub ? 'subscribed' : 'idle'))
+      .catch(() => setPushStatus('idle'));
   }, []);
 
   const route = trip?.selectedRoute;
@@ -81,10 +109,40 @@ export default function Main() {
   }
 
   function handleEditRoute() {
+    // 이 경로에 대한 Push 구독이 남아있으면 계속 알림이 오므로, 트립을 비우기 전에
+    // 최선을 다해(best-effort) 해제한다 — 실패해도 화면 전환은 막지 않는다.
+    if (trip.pushSubscriptionId) {
+      unsubscribePush(trip.pushSubscriptionId).catch(() => {});
+    }
+    unsubscribeFromPush().catch(() => {});
     // 확정된 경로(selectedRoute)가 남아있으면 "/"가 다시 이 화면으로 리다이렉트되므로,
     // 온보딩으로 돌아가려면 트립 자체를 비워야 한다 (App.jsx의 HomeRoute 참고).
     clearCurrentTrip();
     navigate('/');
+  }
+
+  async function handleSubscribePush() {
+    setPushStatus('subscribing');
+    try {
+      const { publicKey } = await fetchVapidPublicKey();
+      if (!publicKey) {
+        setPushStatus('unavailable');
+        return;
+      }
+      const subscription = await subscribeToPush(publicKey);
+      const { id } = await subscribePush({
+        subscription: subscription.toJSON(),
+        selectedRoute: route,
+      });
+      saveCurrentTrip({ ...trip, pushSubscriptionId: id });
+      setPushStatus('subscribed');
+    } catch {
+      if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+        setPushStatus('denied');
+      } else {
+        setPushStatus('error');
+      }
+    }
   }
 
   return (
@@ -104,6 +162,8 @@ export default function Main() {
           <span>캐릭터 상태: {copy.label}</span>
         </div>
       </section>
+
+      <PushSubscribeBanner status={pushStatus} onSubscribe={handleSubscribePush} />
 
       <section className="route-summary">
         <p className="route-summary__notice">

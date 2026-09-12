@@ -8,7 +8,13 @@
  * 필요하면 이 파일의 parseOdsayResponse()만 수정하면 됩니다 (다른 코드는 영향 없음).
  */
 
+const { createCache } = require('../lib/cache');
+
 const ODSAY_URL = 'https://api.odsay.com/v1/api/searchPubTransPathT';
+
+// ODsay Basic 플랜은 일 30건(!)으로 매우 타이트하다. 같은 출발-도착 좌표 조합은
+// 그날 안에 결과가 바뀌지 않으므로 20시간 캐시해서, 리허설·데모 중 반복 조회를 사실상 무료로 만든다.
+const cache = createCache(20 * 60 * 60 * 1000);
 
 function getMockRawPaths() {
   // 실제 ODsay 응답과 형태만 비슷하게 흉내낸 mock (없어도 서버가 동작하도록)
@@ -38,24 +44,38 @@ async function searchPaths({ startX, startY, endX, endY }) {
     return { mocked: true, rawPaths: getMockRawPaths() };
   }
 
-  const params = new URLSearchParams({
-    apiKey,
-    SX: startX,
-    SY: startY,
-    EX: endX,
-    EY: endY,
-    SearchPathType: '0', // 0: 지하철+버스 모두
-  });
+  const cacheKey = `${startX},${startY}->${endX},${endY}`;
+  try {
+    return await cache.wrap(cacheKey, async () => {
+      const params = new URLSearchParams({
+        apiKey,
+        SX: startX,
+        SY: startY,
+        EX: endX,
+        EY: endY,
+        SearchPathType: '0', // 0: 지하철+버스 모두
+      });
 
-  const res = await fetch(`${ODSAY_URL}?${params.toString()}`);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`ODsay API 오류 (${res.status}): ${text}`);
+      const res = await fetch(`${ODSAY_URL}?${params.toString()}`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`ODsay API 오류 (${res.status}): ${text}`);
+      }
+
+      const data = await res.json();
+      if (data.error) {
+        throw new Error(`ODsay API 오류: ${JSON.stringify(data.error)}`);
+      }
+
+      const rawPaths = data?.result?.path || [];
+      return { mocked: false, rawPaths };
+    });
+  } catch (err) {
+    // 일 30건 한도라 데모 중에도 쉽게 소진될 수 있음 — 실패해도 앱이 완전히 멈추지
+    // 않도록 mock으로 폴백한다(실패 응답 자체는 캐시하지 않아 다음 요청에서 다시 시도함).
+    console.error('[odsay] 호출 실패, mock으로 폴백:', err.message);
+    return { mocked: true, rawPaths: getMockRawPaths() };
   }
-
-  const data = await res.json();
-  const rawPaths = data?.result?.path || [];
-  return { mocked: false, rawPaths };
 }
 
 module.exports = { searchPaths };

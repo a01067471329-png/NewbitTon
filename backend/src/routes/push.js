@@ -3,6 +3,14 @@ const store = require('../lib/store');
 
 const router = express.Router();
 
+// GET /api/push/vapid-public-key — 프론트가 pushManager.subscribe()에 넘길 공개키
+router.get('/vapid-public-key', (req, res) => {
+  if (!process.env.VAPID_PUBLIC_KEY) {
+    return res.status(503).json({ error: 'VAPID 키가 설정되지 않았습니다.' });
+  }
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
 // POST /api/push/subscribe
 router.post('/subscribe', (req, res) => {
   const { subscription, selectedRoute } = req.body || {};

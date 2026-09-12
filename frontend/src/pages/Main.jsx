@@ -40,19 +40,19 @@ import './Main.css';
 const MOOD_COPY = {
   safe: {
     image: '/tiger-safe-banner.png',
-    label: '안전 (여유 있음)',
-    headline: '지금 출발하면 막차 탑승 가능',
+    label: '안전',
+    headline: '아직 여유 있어요',
   },
 
   caution: {
     image: '/tiger-caution-banner.png',
-    label: '주의 (서둘러야 해요)',
+    label: '주의',
     headline: '슬슬 출발할 준비를 해주세요',
   },
 
   danger: {
     image: '/tiger-danger-banner.png',
-    label: '위험 (지금 출발하세요!)',
+    label: '위험',
     headline: '지금 당장 출발하세요!',
   },
 };

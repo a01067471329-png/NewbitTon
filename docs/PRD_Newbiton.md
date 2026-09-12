@@ -232,6 +232,8 @@ flowchart LR
 ### `GET /api/routes` 응답 스키마 (예시)
 ```json
 {
+  "mocked": false,
+  "allExpired": false,
   "candidates": [
     {
       "routeId": "r1",
@@ -269,6 +271,7 @@ flowchart LR
 - `transferGaps[].safety`는 F4 기준(5분↑ safe / 2~5분 caution / 2분미만 danger)으로 백엔드가 계산해 내려준다 — 프론트는 색상만 매핑. **마지막 항목(`segmentId: "final"`)은 최종 목적지 도착 구간**으로, `minutesLeft`/`safety`는 사용하지 않고(`null`) `location`만 F6 진입 시 사용한다.
 - `transferGaps[].location`은 해당 구간의 좌표로, F4 화면에서 "놓치면?" 버튼을 눌렀을 때 `/api/alternatives`에 그대로 전달한다.
 - 후보가 여러 개면 `candidates` 배열에 여러 항목이 담기며, F2 화면은 지도에 대략적인 경로를, 하단에는 이 배열을 카드 리스트로 렌더링한다.
+- **`candidates`가 빈 배열일 때 `allExpired`로 원인을 구분한다.** ODsay가 이미 막차 마감이 지난(`minutesUntilDeadline<=0`) 후보를 응답에서 제외하기 때문에, `candidates: []`가 "애초에 경로 자체가 없음"(`allExpired: false`)인지 "경로는 있었지만 전부 막차가 이미 끊김"(`allExpired: true`)인지 프론트가 구분해서 서로 다른 안내 문구를 보여줄 수 있어야 한다. 후자의 경우 "도착지를 바꿔보라"는 문구는 맞지 않으므로 별도 문구(또는 F6 대안 안내 유도) 필요.
 
 ### `POST /api/push/subscribe` 요청 예시
 ```json

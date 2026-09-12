@@ -195,7 +195,7 @@ export default function Main() {
       </section>
 
       <section className="segment-list">
-        <h2 className="segment-list__title">경로</h2>
+        <h2 className="segment-list__title">경로 안내</h2>
         <RouteTimeline steps={timelineSteps} now={now} onMissed={handleMissed} />
       </section>
     </AppShell>

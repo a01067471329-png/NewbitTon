@@ -4,10 +4,12 @@ import { addMinutes } from './countdown';
 // 출발지 → (노선+탑승역) → (노선+하차역) → (환승 시 노선+탑승역, 빨간색 강조) →
 // (노선+하차역) → ... → 도착지 순서로 나열한다 (가독성 개선 요청 반영).
 //
-// "놓치면?" 버튼은 모든 "탑승" 지점(맨 처음 탑승 포함)과 최종 도착 지점에 붙는다 —
-// 그 지점을 새 출발점으로 한 대안(F6)을 언제든 확인할 수 있게 하기 위함. 환승
-// 직후의 탑승 지점만 빨간색으로 강조하고 "환승 여유 N분"을 함께 보여준다
-// (backend/src/services/lastTrain.js가 계산한 transferGaps 기준).
+// "놓치면?" 버튼은 모든 "탑승" 지점(맨 처음 탑승 포함)에만 붙는다 — 그 지점을 새
+// 출발점으로 한 대안(F6)을 언제든 확인할 수 있게 하기 위함. 도착 지점은 단독으로는
+// "놓칠" 대상이 아니라(그 이전의 탑승 지점을 놓쳐야 발생하는 결과이므로) 버튼을
+// 붙이지 않는다. 환승 직후의 탑승 지점만 빨간색으로 강조하고 "환승 여유 N분"을
+// 함께 보여준다 (backend/src/services/lastTrain.js가 계산한 transferGaps 기준,
+// 실제로 교통수단↔교통수단을 갈아탈 때만 해당 — 최초 탑승은 절대 해당 안 됨).
 export function buildRouteTimeline(selectedRoute, trip) {
   const legs = selectedRoute.legs || [];
   const departureDeadline = new Date(selectedRoute.departureDeadline);
@@ -70,11 +72,11 @@ export function buildRouteTimeline(selectedRoute, trip) {
     kind: 'point',
     role: 'end',
     name: destination?.name || '도착지',
-    // final은 departureDeadline 자체가 마감 — 이걸 넘기면 첫 교통수단부터 놓친
-    // 것이므로 전체 여정이 실패로 간주된다 (기존 "막차 최종 실패" 대응 역할).
+    // departureDeadline을 넘기면 첫 교통수단부터 이미 놓친 것이므로, "최종 실패"는
+    // 항상 그 이전의 탑승 지점("놓치면?" 있음)에서 이미 감지된다 — 도착 카드
+    // 자체는 결과만 보여주는 표시라 missable을 두지 않는다(디자인 피드백 반영).
     passExpectedAt: departureDeadline,
     location: destination ? { x: destination.x, y: destination.y } : null,
-    missable: true,
   });
 
   return steps;

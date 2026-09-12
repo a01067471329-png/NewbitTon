@@ -48,6 +48,24 @@
   gap: 12px;
 }
 
+.route-select__cta {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 경로 선택 직후에만 하단 고정 바로 바뀐다. app-shell__body의 좌우 18px / 아래
+   26px 패딩을 음수 마진으로 상쇄해 화면 폭 전체를 덮어, 스크롤되는 카드가 버튼
+   옆으로 비쳐 보이지 않게 한다. */
+.route-select__cta--floating {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin: 0 -18px -26px;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--color-bg-screen);
+  box-shadow: 0 -8px 20px rgba(23, 32, 51, 0.08);
+}
+
 .route-select__empty {
   flex: 1;
   display: flex;

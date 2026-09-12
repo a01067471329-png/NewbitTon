@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import ScreenHeader from '../components/ScreenHeader';
@@ -55,6 +55,18 @@ export default function RouteSelect() {
     };
   }, [trip, retryKey]);
 
+  // 소요시간이 짧은 경로가 위로 오도록 정렬한다 — 백엔드가 내려주는 순서는
+  // 경로탐색 제공자(ODsay/카카오)의 자체 추천 순이라 소요시간 순이 아니다.
+  // 원본 응답은 건드리지 않게 복사본을 정렬하고, totalDurationMin이 없는 후보는
+  // 맨 뒤로 보낸다. 소요시간이 같으면 Array.prototype.sort가 안정 정렬이라
+  // 제공자가 준 원래 순서가 그대로 유지된다.
+  const sortedCandidates = useMemo(() => {
+    if (!candidates) return candidates;
+    const durationOf = (c) =>
+      Number.isFinite(c?.totalDurationMin) ? c.totalDurationMin : Infinity;
+    return [...candidates].sort((a, b) => durationOf(a) - durationOf(b));
+  }, [candidates]);
+
   if (!trip) {
     return (
       <AppShell>
@@ -107,9 +119,9 @@ export default function RouteSelect() {
         </p>
       )}
 
-      {!error && candidates && candidates.length > 0 && (
+      {!error && sortedCandidates && sortedCandidates.length > 0 && (
         <div className="route-select__list">
-          {candidates.map((candidate, i) => (
+          {sortedCandidates.map((candidate, i) => (
             <RouteCard
               key={candidate.routeId}
               candidate={candidate}
@@ -121,14 +133,19 @@ export default function RouteSelect() {
         </div>
       )}
 
-      <button
-        type="button"
-        className="cta-button"
-        disabled={!selectedId}
-        onClick={handleConfirm}
-      >
-        이 경로로 막차 알람 시작
-      </button>
+      {/* 경로를 고르면 목록 끝까지 스크롤하지 않아도 바로 다음 화면으로 넘어갈 수
+          있도록, 확정 버튼을 화면 하단에 고정해 띄운다 (선택 전에는 누를 수 없는
+          버튼이라 목록 아래 원래 자리에 그대로 둔다). */}
+      <div className={'route-select__cta' + (selectedId ? ' route-select__cta--floating' : '')}>
+        <button
+          type="button"
+          className="cta-button"
+          disabled={!selectedId}
+          onClick={handleConfirm}
+        >
+          이 경로로 막차 알람 시작
+        </button>
+      </div>
     </AppShell>
   );
 }

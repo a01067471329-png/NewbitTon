@@ -1,13 +1,20 @@
 const express = require('express');
-const { searchPaths } = require('../services/odsay');
+const odsayProvider = require('../services/providers/odsay');
+const kakaoProvider = require('../services/providers/kakao');
 const { buildCandidate } = require('../services/lastTrain');
 const { getWalkSpeedFactor } = require('../utils/walkSpeed');
 
 const router = express.Router();
 
-// ODsay는 경로 후보를 20개 이상 돌려주는데, 후보 하나마다 구간별 막차 조회(지하철 시간표)가
-// 따라붙어서 검색 한 번에 일일 한도(30건)의 절반 가까이 소모된다. 상위 몇 개만 처리해서
-// 호출량을 묶어둔다.
+// 경로탐색 제공자를 환경변수로 전환할 수 있게 추상화(2026-09-12, PRD 1.6/4장 참고).
+// ODsay는 후보마다 구간별 막차 조회가 따라붙어 검색 1회에 일일 한도(30건)의 상당량이
+// 소모되는 문제가 있어, 카카오맵 대중교통 경로 조회 API로 전환 시도 중. 문제가 생기면
+// ROUTING_PROVIDER 환경변수만 되돌리면 즉시 롤백된다(코드 삭제 없음, git 태그
+// odsay-stable에도 개편 이전 상태가 남아있음).
+const routingProvider = process.env.ROUTING_PROVIDER === 'kakao' ? kakaoProvider : odsayProvider;
+
+// 두 제공자 모두 후보를 여러 개(카카오는 최대 15개, ODsay는 20여 개) 돌려주는데,
+// 후보 하나마다 구간별 막차 조회가 따라붙으므로 상위 몇 개만 처리해서 호출량을 묶어둔다.
 const MAX_CANDIDATES = 5;
 
 // GET /api/routes?startX=&startY=&endX=&endY=&walkSpeed=느림|보통|빠름|맞춤형&personalFactor=
@@ -24,7 +31,10 @@ router.get('/', async (req, res) => {
   const now = new Date();
 
   try {
-    const { mocked, rawPaths } = await searchPaths({ startX, startY, endX, endY });
+    const { mocked, rawPaths } = await routingProvider.searchPaths(
+      { startX, startY, endX, endY },
+      { maxCandidates: MAX_CANDIDATES }
+    );
 
     const allCandidates = await Promise.all(
       rawPaths.slice(0, MAX_CANDIDATES).map((rawPath, i) =>

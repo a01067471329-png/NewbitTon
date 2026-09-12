@@ -14,6 +14,9 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# 배포 빌드가 참조하는 공개 설정(백엔드 URL)이라 커밋한다 — 비밀값은 넣지 말 것.
+# 이게 빠지면 배포 빌드가 localhost:4000을 호출하게 된다.
+!.env.production
 
 # Editor directories and files
 .vscode/*

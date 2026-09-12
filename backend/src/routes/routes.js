@@ -5,9 +5,9 @@ const { getWalkSpeedFactor } = require('../utils/walkSpeed');
 
 const router = express.Router();
 
-// GET /api/routes?startX=&startY=&endX=&endY=&walkSpeed=상|중|하
+// GET /api/routes?startX=&startY=&endX=&endY=&walkSpeed=느림|보통|빠름|맞춤형&personalFactor=
 router.get('/', async (req, res) => {
-  const { startX, startY, endX, endY, walkSpeed } = req.query;
+  const { startX, startY, endX, endY, walkSpeed, personalFactor } = req.query;
 
   if (!startX || !startY || !endX || !endY) {
     return res
@@ -15,16 +15,19 @@ router.get('/', async (req, res) => {
       .json({ error: 'startX, startY, endX, endY 파라미터가 모두 필요합니다.' });
   }
 
-  const walkSpeedFactor = getWalkSpeedFactor(walkSpeed);
+  const walkSpeedFactor = getWalkSpeedFactor(walkSpeed, personalFactor);
   const now = new Date();
 
   try {
     const { mocked, rawPaths } = await searchPaths({ startX, startY, endX, endY });
 
-    const candidates = rawPaths
-      .map((rawPath, i) =>
-        buildCandidate(rawPath, { walkSpeedFactor, now, routeId: `r${i + 1}` })
+    const candidates = (
+      await Promise.all(
+        rawPaths.map((rawPath, i) =>
+          buildCandidate(rawPath, { walkSpeedFactor, now, routeId: `r${i + 1}` })
+        )
       )
+    )
       // 막차 여유시간이 넉넉한 순으로 정렬 (F2 처리 로직)
       .sort((a, b) => b.minutesUntilDeadline - a.minutesUntilDeadline);
 

@@ -1,15 +1,21 @@
 /**
- * PRD F1 참고: 도보속도 상/중/하 선택값을 소요시간 보정계수로 매핑.
- * 계수는 잠정치이며 실제 사용성 테스트를 거쳐 조정하세요 (PRD 2장 F1 처리 로직 참고).
+ * PRD F1 참고(v2): 도보속도 느림/보통/빠름 선택값을 소요시간 보정계수로 매핑.
+ * "맞춤형"은 고정계수 대신 프론트가 계산해 보내는 personalFactor를 사용하고,
+ * 값이 없거나 유효하지 않으면 "보통"(1.0배)으로 대체한다.
  */
 const WALK_SPEED_FACTORS = {
-  상: 0.85,
-  중: 1.0,
-  하: 1.2,
+  느림: 1.2,
+  보통: 1.0,
+  빠름: 0.8,
 };
 
-function getWalkSpeedFactor(level) {
-  return WALK_SPEED_FACTORS[level] ?? WALK_SPEED_FACTORS['중'];
+function getWalkSpeedFactor(level, personalFactor) {
+  if (level === '맞춤형') {
+    const parsed = Number(personalFactor);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    return WALK_SPEED_FACTORS['보통'];
+  }
+  return WALK_SPEED_FACTORS[level] ?? WALK_SPEED_FACTORS['보통'];
 }
 
 module.exports = { WALK_SPEED_FACTORS, getWalkSpeedFactor };

@@ -4,12 +4,25 @@ import AppShell from '../components/AppShell';
 import ScreenHeader from '../components/ScreenHeader';
 import RouteTimeline from '../components/RouteTimeline';
 import PushSubscribeBanner from '../components/PushSubscribeBanner';
-import { getCurrentTrip, saveCurrentTrip, clearCurrentTrip } from '../utils/storage';
+import {
+  getCurrentTrip,
+  saveCurrentTrip,
+  clearCurrentTrip,
+} from '../utils/storage';
 import { classifySafety } from '../utils/safety';
 import { formatCountdown } from '../utils/countdown';
 import { buildRouteTimeline } from '../utils/timeline';
-import { formatKstTime, transitLegsOf, transferCountOf, legIcon } from '../utils/routeFormat';
-import { fetchVapidPublicKey, subscribePush, unsubscribePush } from '../api';
+import {
+  formatKstTime,
+  transitLegsOf,
+  transferCountOf,
+  legIcon,
+} from '../utils/routeFormat';
+import {
+  fetchVapidPublicKey,
+  subscribePush,
+  unsubscribePush,
+} from '../api';
 import {
   isPushSupported,
   registerServiceWorker,
@@ -19,31 +32,56 @@ import {
 } from '../utils/push';
 import './Main.css';
 
+
+/* ================================
+   남은 시간에 따른 3단계 배너
+================================ */
+
 const MOOD_COPY = {
-  safe: { emoji: '🙂', label: '안전 (여유 있음)', headline: '지금 출발하면 막차 탑승 가능' },
-  caution: { emoji: '😬', label: '주의 (서둘러야 해요)', headline: '서둘러 출발하세요' },
-  danger: { emoji: '😱', label: '위험 (지금 뛰세요!)', headline: '지금 당장 출발하세요!' },
+  safe: {
+    image: '/tiger-safe-banner.png',
+    label: '안전 (여유 있음)',
+    headline: '지금 출발하면 막차 탑승 가능',
+  },
+
+  caution: {
+    image: '/tiger-caution-banner.png',
+    label: '주의 (서둘러야 해요)',
+    headline: '슬슬 출발할 준비를 해주세요',
+  },
+
+  danger: {
+    image: '/tiger-danger-banner.png',
+    label: '위험 (지금 출발하세요!)',
+    headline: '지금 당장 출발하세요!',
+  },
 };
 
-// F3+F4 메인 화면 — 역산 출발 알람 시각 카운트다운 + 환승구간별 여유시간 배지.
-// F2에서 "이 경로로 막차 알람 시작"을 누른 뒤부터는 이 화면이 앱의 기본 홈 화면이
-// 된다(App.jsx의 HomeRoute 참고) — 그래서 뒤로가기 버튼이 없고, 대신 "경로 수정"
-// 버튼으로 트립을 비우고 온보딩부터 다시 시작할 수 있게 한다.
-// F2에서 확정해 저장해둔 selectedRoute를 기준으로 매초 갱신되는 카운트다운을
-// 보여준다. 캐릭터 표정(placeholder 이모지)은 F4와 동일한 5분/2분 임계값으로
-// 결정하며, 실제 캐릭터 일러스트 적용은 마지막 단계(F5 폴리싱)에서 진행한다.
+
 export default function Main() {
   const navigate = useNavigate();
+
   const [trip] = useState(() => getCurrentTrip());
   const [now, setNow] = useState(() => new Date());
 
+
+  /* ================================
+     1초마다 현재 시간 갱신
+  ================================ */
+
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
     return () => clearInterval(timer);
   }, []);
 
-  // F5 Push 구독 상태 확인 — Service Worker를 등록해두고, 이미 구독돼 있는지
-  // 조회한다. 실제 구독 생성(권한 프롬프트)은 사용자가 버튼을 눌렀을 때만 한다.
+
+  /* ================================
+     Push 알림 상태
+  ================================ */
+
   const [pushStatus, setPushStatus] = useState('checking');
 
   useEffect(() => {
@@ -51,30 +89,60 @@ export default function Main() {
       setPushStatus('unsupported');
       return;
     }
-    if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+
+    if (
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'denied'
+    ) {
       setPushStatus('denied');
       return;
     }
+
     registerServiceWorker()
       .then(() => getExistingSubscription())
-      .then((sub) => setPushStatus(sub ? 'subscribed' : 'idle'))
-      .catch(() => setPushStatus('idle'));
+      .then((sub) => {
+        setPushStatus(sub ? 'subscribed' : 'idle');
+      })
+      .catch(() => {
+        setPushStatus('idle');
+      });
   }, []);
+
 
   const route = trip?.selectedRoute;
 
+
+  /* ================================
+     경로 타임라인 생성
+  ================================ */
+
   const timelineSteps = useMemo(() => {
     if (!route) return [];
+
     return buildRouteTimeline(route, trip);
   }, [route, trip]);
+
+
+  /* ================================
+     트립 정보가 없는 경우
+  ================================ */
 
   if (!trip) {
     return (
       <AppShell>
         <ScreenHeader />
+
         <div className="main-empty">
-          <p>출발지·도착지 정보가 없어요. 온보딩부터 다시 시작해주세요.</p>
-          <button type="button" className="cta-button" onClick={() => navigate('/')}>
+          <p>
+            출발지·도착지 정보가 없어요.
+            온보딩부터 다시 시작해주세요.
+          </p>
+
+          <button
+            type="button"
+            className="cta-button"
+            onClick={() => navigate('/')}
+          >
             온보딩으로 돌아가기
           </button>
         </div>
@@ -82,13 +150,30 @@ export default function Main() {
     );
   }
 
+
+  /* ================================
+     선택한 경로가 없는 경우
+  ================================ */
+
   if (!route) {
     return (
       <AppShell>
-        <ScreenHeader backTo="/routes" backLabel="경로 선택" />
+        <ScreenHeader
+          backTo="/routes"
+          backLabel="경로 선택"
+        />
+
         <div className="main-empty">
-          <p>선택된 경로가 없어요. 경로를 먼저 선택해주세요.</p>
-          <button type="button" className="cta-button" onClick={() => navigate('/routes')}>
+          <p>
+            선택된 경로가 없어요.
+            경로를 먼저 선택해주세요.
+          </p>
+
+          <button
+            type="button"
+            className="cta-button"
+            onClick={() => navigate('/routes')}
+          >
             경로 선택으로 돌아가기
           </button>
         </div>
@@ -96,59 +181,119 @@ export default function Main() {
     );
   }
 
+
+  /* ================================
+     막차까지 남은 시간 계산
+  ================================ */
+
   const departureDeadline = new Date(route.departureDeadline);
-  const diffMs = departureDeadline.getTime() - now.getTime();
-  const minutesLeft = Math.floor(diffMs / 60000);
-  const mood = classifySafety(minutesLeft);
-  const overdue = diffMs < 0;
-  const copy = MOOD_COPY[mood];
-  const legs = transitLegsOf(route);
-  const transferCount = transferCountOf(route);
+
+  const diffMs =
+    departureDeadline.getTime() - now.getTime();
+
+  const minutesLeft =
+    Math.floor(diffMs / 60000);
+
+  const mood =
+    classifySafety(minutesLeft);
+
+  const overdue =
+    diffMs < 0;
+
+  const copy =
+    MOOD_COPY[mood];
+
+  const legs =
+    transitLegsOf(route);
+
+  const transferCount =
+    transferCountOf(route);
+
+
+  /* ================================
+     막차를 놓친 구간 처리
+  ================================ */
 
   function handleMissed(segment) {
-    // F6이 GET /api/alternatives?lat=&lng=&segmentId=를 바로 호출할 수 있도록
-    // 해당 구간의 좌표까지 함께 넘긴다 (segment.location: x=경도, y=위도).
-    const params = new URLSearchParams({ segment: segment.id });
+    const params = new URLSearchParams({
+      segment: segment.id,
+    });
+
     if (segment.location) {
-      params.set('lat', segment.location.y);
-      params.set('lng', segment.location.x);
+      params.set(
+        'lat',
+        segment.location.y,
+      );
+
+      params.set(
+        'lng',
+        segment.location.x,
+      );
     }
-    navigate(`/alternatives?${params.toString()}`);
+
+    navigate(
+      `/alternatives?${params.toString()}`,
+    );
   }
 
-  // "경로 수정"과 화면 맨 아래 "막차 안내 종료" 버튼이 공유하는 종료 로직 — 라벨은
-  // 다르지만("다른 경로로 바꿀래요" vs "그만 볼래요") 실제로 하는 일은 동일하다:
-  // 진행 중인 알람/구독을 정리하고 온보딩부터 다시 시작한다.
+
+  /* ================================
+     막차 안내 종료
+  ================================ */
+
   function handleEndGuidance() {
-    // 이 경로에 대한 Push 구독이 남아있으면 계속 알림이 오므로, 트립을 비우기 전에
-    // 최선을 다해(best-effort) 해제한다 — 실패해도 화면 전환은 막지 않는다.
     if (trip.pushSubscriptionId) {
-      unsubscribePush(trip.pushSubscriptionId).catch(() => {});
+      unsubscribePush(
+        trip.pushSubscriptionId,
+      ).catch(() => {});
     }
-    unsubscribeFromPush().catch(() => {});
-    // 확정된 경로(selectedRoute)가 남아있으면 "/"가 다시 이 화면으로 리다이렉트되므로,
-    // 온보딩으로 돌아가려면 트립 자체를 비워야 한다 (App.jsx의 HomeRoute 참고).
+
+    unsubscribeFromPush()
+      .catch(() => {});
+
     clearCurrentTrip();
+
     navigate('/');
   }
 
+
+  /* ================================
+     Push 알림 구독
+  ================================ */
+
   async function handleSubscribePush() {
     setPushStatus('subscribing');
+
     try {
-      const { publicKey } = await fetchVapidPublicKey();
+      const { publicKey } =
+        await fetchVapidPublicKey();
+
       if (!publicKey) {
         setPushStatus('unavailable');
         return;
       }
-      const subscription = await subscribeToPush(publicKey);
-      const { id } = await subscribePush({
-        subscription: subscription.toJSON(),
-        selectedRoute: route,
+
+      const subscription =
+        await subscribeToPush(publicKey);
+
+      const { id } =
+        await subscribePush({
+          subscription:
+            subscription.toJSON(),
+          selectedRoute: route,
+        });
+
+      saveCurrentTrip({
+        ...trip,
+        pushSubscriptionId: id,
       });
-      saveCurrentTrip({ ...trip, pushSubscriptionId: id });
+
       setPushStatus('subscribed');
     } catch {
-      if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+      if (
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'denied'
+      ) {
         setPushStatus('denied');
       } else {
         setPushStatus('error');
@@ -156,73 +301,187 @@ export default function Main() {
     }
   }
 
+
+  /* ================================
+     화면
+  ================================ */
+
   return (
     <AppShell>
       <ScreenHeader />
-      <section className={`main-banner main-banner--${mood}`}>
-        <p className="main-banner__headline">{overdue ? '출발 시각이 지났어요' : copy.headline}</p>
-        <p className="main-banner__deadline">
-          오늘 <strong>{formatKstTime(departureDeadline)}</strong>까지 출발
-        </p>
-        <p className="main-banner__countdown">
-          ⏱ {overdue ? '지난 시간' : '남은 시간'} {formatCountdown(diffMs)}
-        </p>
-        <div className="main-banner__character">
-          <span className="main-banner__emoji" aria-hidden="true">
-            {copy.emoji}
-          </span>
-          <span>{copy.label}</span>
+
+
+      {/* ============================
+          3단계 호랑이 배너
+      ============================ */}
+
+      <section
+        className={`main-banner main-banner--${mood}`}
+      >
+        {/* 남은 시간 상태에 따라
+            safe / caution / danger 이미지 자동 변경 */}
+        <img
+          src={copy.image}
+          alt=""
+          className="main-banner__background"
+          aria-hidden="true"
+        />
+
+        {/* 이미지 위 텍스트 가독성용 그라데이션 */}
+        <div
+          className="main-banner__shade"
+          aria-hidden="true"
+        />
+
+
+        <div className="main-banner__content">
+          <p className="main-banner__headline">
+            {overdue
+              ? '출발 시각이 지났어요'
+              : copy.headline}
+          </p>
+
+
+          <p className="main-banner__deadline">
+            오늘{' '}
+            <strong>
+              {formatKstTime(
+                departureDeadline,
+              )}
+            </strong>
+            까지 출발
+          </p>
+
+
+          <p className="main-banner__countdown">
+            ⏱{' '}
+            {overdue
+              ? '지난 시간'
+              : '남은 시간'}{' '}
+            {formatCountdown(diffMs)}
+          </p>
+
+
+          <div className="main-banner__status">
+            {copy.label}
+          </div>
         </div>
       </section>
 
-      <PushSubscribeBanner status={pushStatus} onSubscribe={handleSubscribePush} />
+
+      {/* Push 알림 안내 */}
+
+      <PushSubscribeBanner
+        status={pushStatus}
+        onSubscribe={handleSubscribePush}
+      />
+
+
+      {/* ============================
+          선택한 경로 요약
+      ============================ */}
 
       <section className="route-summary">
         <p className="route-summary__notice">
-          이 노선·환승역 기준으로 계산된 알람이에요. 다른 경로로 이동하면 시간이 달라질 수
-          있어요.
+          이 노선·환승역 기준으로 계산된
+          알람이에요. 다른 경로로 이동하면
+          시간이 달라질 수 있어요.
         </p>
+
+
         <div className="route-summary__legs">
           {legs.map((leg, i) => (
-            <div className="route-summary__leg-step" key={i}>
+            <div
+              className="route-summary__leg-step"
+              key={i}
+            >
               <div className="route-summary__leg-track">
-                <span
-                  className={
-                    'route-summary__leg-line' + (i === 0 ? ' route-summary__leg-line--hidden' : '')
-                  }
-                />
-                <span className="route-summary__leg-dot" />
+
                 <span
                   className={
                     'route-summary__leg-line' +
-                    (i === legs.length - 1 ? ' route-summary__leg-line--hidden' : '')
+                    (i === 0
+                      ? ' route-summary__leg-line--hidden'
+                      : '')
                   }
                 />
+
+                <span className="route-summary__leg-dot" />
+
+                <span
+                  className={
+                    'route-summary__leg-line' +
+                    (i === legs.length - 1
+                      ? ' route-summary__leg-line--hidden'
+                      : '')
+                  }
+                />
+
               </div>
+
+
               <span className="route-summary__leg">
-                {legIcon(leg.mode)} {leg.line}
+                {legIcon(leg.mode)}{' '}
+                {leg.line}
               </span>
+
             </div>
           ))}
         </div>
+
+
         <div className="route-summary__footer">
+
           <p className="route-summary__meta">
-            총 소요 {route.totalDurationMin}분 · 환승 {transferCount}회
+            총 소요{' '}
+            {route.totalDurationMin}분 ·
+            환승 {transferCount}회
           </p>
-          <button type="button" className="route-edit-button" onClick={handleEndGuidance}>
+
+
+          <button
+            type="button"
+            className="route-edit-button"
+            onClick={handleEndGuidance}
+          >
             경로 수정
           </button>
+
         </div>
       </section>
 
+
+      {/* ============================
+          경로 안내
+      ============================ */}
+
       <section className="segment-list">
-        <h2 className="segment-list__title">경로 안내</h2>
-        <RouteTimeline steps={timelineSteps} now={now} onMissed={handleMissed} />
+
+        <h2 className="segment-list__title">
+          경로 안내
+        </h2>
+
+        <RouteTimeline
+          steps={timelineSteps}
+          now={now}
+          onMissed={handleMissed}
+        />
+
       </section>
 
-      <button type="button" className="end-guidance-button" onClick={handleEndGuidance}>
+
+      {/* ============================
+          안내 종료
+      ============================ */}
+
+      <button
+        type="button"
+        className="end-guidance-button"
+        onClick={handleEndGuidance}
+      >
         막차 안내 종료
       </button>
+
     </AppShell>
   );
 }

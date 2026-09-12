@@ -1,0 +1,9 @@
+{
+  "name": "Newbiton Push 테스트",
+  "short_name": "Push테스트",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}

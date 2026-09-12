@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
@@ -17,6 +18,9 @@ app.use(
   })
 );
 app.use(express.json());
+
+// F5(Web Push) 실기기 검증용 임시 테스트 페이지 (실제 프론트 구현이 아님, public/push-test 참고)
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'newbiton-backend', time: new Date().toISOString() });

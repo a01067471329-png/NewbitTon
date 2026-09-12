@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Newbiton Push 테스트</title>
+  <link rel="manifest" href="./manifest.json" />
+  <!-- iOS는 이 두 메타태그가 있어야 "홈 화면에 추가"로 연 페이지를 독립 앱(standalone)으로 띄운다.
+       standalone이 아니면(=사파리 탭으로 열리면) Web Push 권한 자체가 동작하지 않는다. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Push테스트" />
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 480px; margin: 24px auto; padding: 0 16px; }
+    button { font-size: 16px; padding: 12px 16px; margin: 8px 0; width: 100%; }
+    #log { background: #f2f2f2; padding: 12px; border-radius: 8px; white-space: pre-wrap; font-size: 13px; margin-top: 16px; min-height: 120px; }
+  </style>
+</head>
+<body>
+  <h2>Newbiton Push 수신 테스트</h2>
+  <p>F5(막차 임박 Web Push) 실기기 검증용 임시 페이지입니다. 실제 프론트엔드 화면이 아닙니다.</p>
+  <div id="standaloneWarning" hidden style="background:#ffe6e6; padding:12px; border-radius:8px; margin-bottom:12px;">
+    ⚠️ 지금 <b>사파리 브라우저 탭</b>으로 열려있습니다 (독립 앱 아님). 이 상태에선 Push가 동작하지 않습니다.<br /><br />
+    홈 화면 아이콘을 <b>길게 눌러 삭제</b>한 뒤, 사파리에서 이 페이지를 다시 열어 공유 버튼 →
+    <b>"홈 화면에 추가"</b>로 새로 추가하고, 그 아이콘으로 다시 열어주세요.
+  </div>
+  <button id="subscribeBtn">1. 구독 시작 (6분짜리 트립 등록)</button>
+  <button id="unsubscribeBtn" disabled>2. 구독 해제</button>
+  <div id="log">대기 중...</div>
+
+  <script>
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    if (isIOS && !isStandalone) {
+      document.getElementById('standaloneWarning').hidden = false;
+    }
+
+    const logEl = document.getElementById('log');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+    const unsubscribeBtn = document.getElementById('unsubscribeBtn');
+    let subscriptionId = null;
+
+    function log(msg) {
+      logEl.textContent += '\n' + msg;
+      console.log(msg);
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = atob(base64);
+      return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+    }
+
+    async function subscribe() {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+          log('이 브라우저는 Web Push를 지원하지 않습니다. (iOS는 홈 화면에 추가 후 열어야 합니다)');
+          return;
+        }
+
+        const reg = await navigator.serviceWorker.register('./sw.js');
+        log('서비스워커 등록 완료');
+
+        const permission = await Notification.requestPermission();
+        log('알림 권한: ' + permission);
+        if (permission !== 'granted') return;
+
+        const { publicKey } = await fetch('/api/push/vapid-public-key').then((r) => r.json());
+        const pushSub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey),
+        });
+        log('Push 구독 생성 완료');
+
+        // 테스트 편의를 위해 지금부터 6분 뒤를 막차 알람 시각으로 설정
+        // (안전 5분↑ / 주의 2~5분 / 위험 2분↓ 등급이 몇 분 안에 순서대로 전이됨)
+        const departureDeadline = new Date(Date.now() + 6 * 60 * 1000).toISOString();
+
+        const res = await fetch('/api/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: pushSub.toJSON(),
+            selectedRoute: { departureDeadline, transferGaps: [] },
+          }),
+        });
+        const data = await res.json();
+        subscriptionId = data.id;
+        log('백엔드 등록 완료 (id=' + subscriptionId + ')');
+        log('막차 알람 시각: ' + departureDeadline);
+        log('10초 간격으로 등급을 재계산합니다. 5분/2분 경계를 지날 때 알림이 옵니다.');
+
+        subscribeBtn.disabled = true;
+        unsubscribeBtn.disabled = false;
+      } catch (err) {
+        log('에러: ' + err.message);
+      }
+    }
+
+    async function unsubscribe() {
+      if (!subscriptionId) return;
+      await fetch('/api/push/subscribe/' + subscriptionId, { method: 'DELETE' });
+      log('구독 해제 완료');
+      subscribeBtn.disabled = false;
+      unsubscribeBtn.disabled = true;
+      subscriptionId = null;
+    }
+
+    subscribeBtn.addEventListener('click', subscribe);
+    unsubscribeBtn.addEventListener('click', unsubscribe);
+  </script>
+</body>
+</html>

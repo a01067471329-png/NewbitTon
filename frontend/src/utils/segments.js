@@ -14,7 +14,8 @@ import { addMinutes } from './countdown';
 // 초과) 대응 역할을 겸한다 — 그래서 final 구간의 passExpectedAt은 departureDeadline
 // 그 자체로 둔다: 이 시각을 넘기면 애초에 첫 교통수단부터 놓친 것이므로 전체
 // 여정이 실패로 간주된다.
-export function buildSegments(selectedRoute, destinationName) {
+export function buildSegments(selectedRoute, destination) {
+  const destinationName = destination?.name;
   const legs = selectedRoute.legs || [];
   const departureDeadline = new Date(selectedRoute.departureDeadline);
 
@@ -39,6 +40,10 @@ export function buildSegments(selectedRoute, destinationName) {
         passExpectedAt: addMinutes(departureDeadline, cumulativeMin),
         fromLeg: legs[gap.afterLeg - 1] || null,
         toLeg: legs[gap.afterLeg + 1] || null,
+        // F6 대안 조회(GET /api/alternatives?lat=&lng=)에 쓸 좌표. 백엔드가 이미
+        // 환승 지점 좌표를 계산해 내려준다 (backend/src/services/lastTrain.js의
+        // nearestCoordinate, x=경도/y=위도).
+        location: gap.location || null,
       };
     });
 
@@ -47,6 +52,9 @@ export function buildSegments(selectedRoute, destinationName) {
     type: 'final',
     label: destinationName ? `${destinationName} 도착` : '최종 목적지 도착',
     passExpectedAt: departureDeadline,
+    // 최종 목적지는 온보딩에서 검색해 확정한 좌표(destination)가 백엔드가 역으로
+    // 추정한 좌표보다 정확하므로 이쪽을 우선 사용한다.
+    location: destination ? { x: destination.x, y: destination.y } : null,
   };
 
   return [...transferSegments, finalSegment];

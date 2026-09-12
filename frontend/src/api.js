@@ -146,24 +146,26 @@ export async function unsubscribePush(id) {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/alternatives?lat=&lng=&time=
+// GET /api/alternatives?lat=&lng=&segmentId=
 // ---------------------------------------------------------------------------
-async function mockFetchAlternatives() {
+async function mockFetchAlternatives(segmentId) {
   await delay(200);
   return {
     mocked: true,
+    segmentId: segmentId || null,
     transitAlternatives: [
       { type: 'night_bus', name: '심야버스 N26', walkMin: 4, intervalMin: 20 },
-      { type: 'taxi', name: '택시 승차 지점', walkMin: 2, intervalMin: null },
+      { type: 'taxi', name: '택시 승차 지점', walkMin: 2 },
+      { type: 'wait_first_train', name: '첫차까지 대기', firstTrainTime: null },
     ],
     waitingSpots: [{ name: '24시간 편의점', walkMin: 1 }],
     costComparison: null,
   };
 }
 
-export async function fetchAlternatives({ lat, lng, time }) {
-  if (USE_MOCK) return mockFetchAlternatives();
-  return request('/api/alternatives', { params: { lat, lng, time } });
+export async function fetchAlternatives({ lat, lng, segmentId }) {
+  if (USE_MOCK) return mockFetchAlternatives(segmentId);
+  return request('/api/alternatives', { params: { lat, lng, segmentId } });
 }
 
 // ---------------------------------------------------------------------------

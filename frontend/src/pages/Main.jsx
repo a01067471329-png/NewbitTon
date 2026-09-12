@@ -65,7 +65,7 @@ export default function Main() {
 
   const segments = useMemo(() => {
     if (!route) return [];
-    return buildSegments(route, trip?.destination?.name);
+    return buildSegments(route, trip?.destination);
   }, [route, trip]);
 
   if (!trip) {
@@ -104,8 +104,15 @@ export default function Main() {
   const legs = transitLegsOf(route);
   const transferCount = transferCountOf(route);
 
-  function handleMissed(segmentId) {
-    navigate(`/alternatives?segment=${segmentId}`);
+  function handleMissed(segment) {
+    // F6이 GET /api/alternatives?lat=&lng=&segmentId=를 바로 호출할 수 있도록
+    // 해당 구간의 좌표까지 함께 넘긴다 (segment.location: x=경도, y=위도).
+    const params = new URLSearchParams({ segment: segment.id });
+    if (segment.location) {
+      params.set('lat', segment.location.y);
+      params.set('lng', segment.location.x);
+    }
+    navigate(`/alternatives?${params.toString()}`);
   }
 
   function handleEditRoute() {

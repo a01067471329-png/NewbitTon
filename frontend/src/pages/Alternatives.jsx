@@ -1,30 +1,95 @@
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import BackButton from '../components/BackButton';
-import PlaceholderNotice from '../components/PlaceholderNotice';
+import AlternativeCard from '../components/AlternativeCard';
+import { fetchAlternatives } from '../api';
+import './Alternatives.css';
 
-// F6 대안 안내 화면 — 단계 5에서 구현 예정.
-// PRD상 "뒤로가기로 언제든 F3+F4 메인 화면으로 복귀 가능"이 명시되어 있어
-// 뒤로가기 목적지를 /main으로 고정한다.
-// F3+F4의 각 구간 카드 "놓치면?" 버튼이 ?segment=<id>로 어느 구간에서 진입했는지
-// 전달한다 (예: 환승구간 "t1", 최종 목적지 "final") — 단계 5에서 이 값으로 해당
-// 구간 기준 대안을 조회하게 된다.
+// F6 대안 안내 화면. F3+F4의 각 구간 카드 "놓치면?" 버튼에서 ?segment=<id>&lat=&lng=로
+// 들어온다 — 강제 전환이나 확인 절차 없이 사용자가 필요하다고 판단할 때만 열람하고,
+// 뒤로가기를 누르면 언제든 메인 화면으로 복귀한다 (PRD F6 v2, BackButton to="/main").
 export default function Alternatives() {
   const [searchParams] = useSearchParams();
   const segmentId = searchParams.get('segment');
+  const lat = searchParams.get('lat');
+  const lng = searchParams.get('lng');
+
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    if (!lat || !lng) return undefined;
+    let cancelled = false;
+    setError(null);
+    setData(null);
+
+    fetchAlternatives({ lat, lng, segmentId })
+      .then((res) => {
+        if (!cancelled) setData(res);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || '대안을 불러오지 못했어요');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lat, lng, segmentId, retryKey]);
 
   return (
     <AppShell>
       <BackButton to="/main" label="메인 화면" />
-      <PlaceholderNotice
-        stepLabel="단계 5 (F6)"
-        title="대안 안내 화면"
-        description={
-          segmentId
-            ? `막차 실패 시 대안 교통편과 대기 장소 안내가 여기에 구현됩니다. (진입 구간: ${segmentId})`
-            : '막차 실패 시 대안 교통편과 대기 장소 안내가 여기에 구현됩니다.'
-        }
-      />
+
+      <header className="alternatives__header">
+        <h1 className="alternatives__title">😢 막차를 놓쳤다면</h1>
+        <p className="alternatives__subtitle">아래 대안을 확인해보세요</p>
+      </header>
+
+      {(!lat || !lng) && (
+        <p className="alternatives__status">
+          위치 정보가 없어 대안을 조회할 수 없어요. 메인 화면에서 "놓치면?" 버튼으로
+          다시 들어와주세요.
+        </p>
+      )}
+
+      {lat && lng && error && (
+        <div className="alternatives__error">
+          <p>{error}</p>
+          <button type="button" onClick={() => setRetryKey((k) => k + 1)}>
+            다시 시도
+          </button>
+        </div>
+      )}
+
+      {lat && lng && !error && !data && (
+        <p className="alternatives__status">대안을 찾는 중…</p>
+      )}
+
+      {data && (
+        <>
+          <section className="alternatives__section">
+            <h2 className="alternatives__section-title">대안 교통수단</h2>
+            <div className="alternatives__list">
+              {data.transitAlternatives.map((alt, i) => (
+                <AlternativeCard alternative={alt} key={`${alt.type}-${i}`} />
+              ))}
+            </div>
+          </section>
+
+          <section className="alternatives__section">
+            <h2 className="alternatives__section-title">대기 장소</h2>
+            <div className="alternatives__list">
+              {data.waitingSpots.map((spot, i) => (
+                <div className="alt-spot" key={`${spot.name}-${i}`}>
+                  🏪 {spot.name} <span className="alt-spot__walk">(도보 {spot.walkMin}분)</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
     </AppShell>
   );
 }

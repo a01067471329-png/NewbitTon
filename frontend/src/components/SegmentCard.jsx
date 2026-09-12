@@ -31,7 +31,7 @@ export default function SegmentCard({ segment, now, onMissed }) {
       <button
         type="button"
         className="segment-card__missed"
-        onClick={() => onMissed(segment.id)}
+        onClick={() => onMissed(segment)}
       >
         놓치면?
       </button>

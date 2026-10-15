@@ -12,5 +12,14 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
+      # 슬립 상태에서 깨어나는 동안 Render가 즉시 5xx를 돌려주는 경우가 있어서
+      # (exit code 22로 실패) 에러여도 재시도하고, 콜드스타트(~20초)를 기다릴 수 있게 타임아웃을 둔다.
       - name: Ping backend health endpoint
-        run: curl -sf https://newbitton.onrender.com/health
+        timeout-minutes: 8
+        run: >-
+          curl -sSf
+          --max-time 60
+          --retry 5
+          --retry-delay 15
+          --retry-all-errors
+          https://newbitton.onrender.com/health
